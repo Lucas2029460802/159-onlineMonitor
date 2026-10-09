@@ -191,7 +191,7 @@ export default function SurveillanceManage() {
             )}
             {/* 监控卡片 */}
             {!loading && curSvGroup.length > 0 && (
-                <div className="grid grid-cols-4 lg:grid-cols-5 gap-5 flex-1 overflow-y-scroll">
+                <div className="grid grid-cols-4 lg:grid-cols-5 gap-5 content-start flex-1 overflow-y-scroll">
                     {curSvGroup.map((item) => (
                         <SvCard
                             key={item.svId}

@@ -3,16 +3,14 @@ import { Outlet } from "react-router-dom";
 import { NavLink } from "react-router-dom";
 
 import {
-    // IconBaseAgent, // 已隐藏智能体
-    // IconHome, // 已隐藏首页
     IconLogout,
     IconOffline,
-    IconOnline,
     IconSetting,
     IconUsers,
 } from "@/assets/svg";
 import { ConfirmContext } from "@/components/confirm";
 import { Message } from "@/components/message";
+import { OnlineSideMenu } from "@/layout/online/onlineSideMenu";
 import { UserRoles } from "@/api/type";
 import { $User } from "@/store/user";
 import { $UI } from "@/store/ui";
@@ -25,19 +23,21 @@ interface SideBarItemProps {
 
 const SideBarItem = ({ to, Svg, text }: SideBarItemProps) => {
     return (
-        <NavLink
-            to={to}
-            className={({ isActive }) =>
-                `flex flex-col justify-center items-center py-1 rounded-xl hover:cursor-pointer hover:bg-white/20 ${
-                    isActive ? "bg-white/15 " : ""
-                }`
-            }
-        >
-            <div className="w-7 h-7">
-                <Svg className="w-full h-full" />
-            </div>
-            <div className="text-sm">{text}</div>
-        </NavLink>
+        <li className="w-full">
+            <NavLink
+                to={to}
+                className={({ isActive }) =>
+                    `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
+                        isActive
+                            ? "bg-white/15 text-white"
+                            : "text-white/80 hover:bg-white/10 hover:text-white"
+                    }`
+                }
+            >
+                <Svg className="w-5 h-5 shrink-0" />
+                <span className="text-sm">{text}</span>
+            </NavLink>
+        </li>
     );
 };
 
@@ -51,61 +51,57 @@ const LoggoutItem = () => {
         window.location.href = "/login";
     };
     return (
-        <button
-            className="flex flex-col justify-center items-center py-1 rounded-xl hover:cursor-pointer hover:bg-white/20 "
-            onClick={() => {
-                Confirm?.showConfirm(
-                    "确定要注销登录吗？",
-                    "需要重新登录",
-                    async () => {
-                        handleLogout();
-                        Confirm.hideConfirm();
-                    },
-                    () => {
-                        Confirm.hideConfirm();
-                    },
-                );
-            }}
-        >
-            <div className="w-7 h-7">
-                <IconLogout className="w-full h-full" />
-            </div>
-            <div className="text-sm">登出</div>
-        </button>
+        <li className="w-full">
+            <button
+                type="button"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+                onClick={() => {
+                    Confirm?.showConfirm(
+                        "确定要注销登录吗？",
+                        "需要重新登录",
+                        async () => {
+                            handleLogout();
+                            Confirm.hideConfirm();
+                        },
+                        () => {
+                            Confirm.hideConfirm();
+                        },
+                    );
+                }}
+            >
+                <IconLogout className="w-5 h-5 shrink-0" />
+                <span className="text-sm">登出</span>
+            </button>
+        </li>
     );
 };
 
 export const BaseLayout = () => {
-    // 只有分局(Admin)才显示用户管理入口
     const role = $User.use((state) => state.Role);
 
     return (
         <div className="flex w-screen min-h-screen">
-            <div className="w-25 shrink-0 bg-[#222d32] text-white flex jusify-center items-center flex-col py-4 px-3">
-                <div className="w-10 h-10 rounded-full bg-white">
-                    <img src="/xiaopu.png" alt="" />
+            <aside className="w-56 shrink-0 bg-[#222d32] text-white flex flex-col py-5 px-3">
+                <div className="flex items-center gap-3 px-3 mb-4">
+                    <div className="w-9 h-9 rounded-full bg-white shrink-0 overflow-hidden">
+                        <img
+                            src="/xiaopu.png"
+                            alt=""
+                            className="w-full h-full"
+                        />
+                    </div>
+                    <span className="text-sm font-medium text-white/90">
+                        慧眼系统
+                    </span>
                 </div>
-                <div className="mt-2 h-0.25 bg-white/50 w-4/5"></div>
-                <ul className="w-full mt-4 flex flex-col gap-4">
-                    {/* 首页 - 已隐藏 */}
-                    {/* <SideBarItem to="/index" Svg={IconHome} text="首页" /> */}
+                <div className="h-px bg-white/10 mx-2" />
+                <ul className="w-full mt-4 flex flex-col gap-2 flex-1">
                     <SideBarItem
                         to="/offline"
                         Svg={IconOffline}
                         text="离线分析"
                     />
-                    <SideBarItem
-                        to="/online"
-                        Svg={IconOnline}
-                        text="在线监测"
-                    />
-                    {/* 智能体 - 已隐藏 */}
-                    {/* <SideBarItem
-                        to="/agent"
-                        Svg={IconBaseAgent}
-                        text="智能体"
-                    /> */}
-                    {/* 只有分局(Admin)才显示用户管理入口 */}
+                    <OnlineSideMenu />
                     {role === UserRoles.Admin && (
                         <SideBarItem
                             to="/user-manage"
@@ -118,9 +114,10 @@ export const BaseLayout = () => {
                         Svg={IconSetting}
                         text="数据中台"
                     />
-                    <LoggoutItem></LoggoutItem>
+                    <li className="flex-1" />
+                    <LoggoutItem />
                 </ul>
-            </div>
+            </aside>
             <div className="flex-1 bg-[#dff2fe] min-w-0">
                 <Outlet />
                 <Message />

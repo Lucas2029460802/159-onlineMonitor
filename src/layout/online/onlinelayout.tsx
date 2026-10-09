@@ -9,7 +9,7 @@ export const OnlineSystemLayout = () => {
         <div>
             <Message />
             <OnlineHeader />
-            <div className="h-[calc(100vh-64px)] bg-bg-1">
+            <div className="h-[calc(100vh-56px)] bg-bg-1">
                 <Outlet></Outlet>
             </div>
         </div>
