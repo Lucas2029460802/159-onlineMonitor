@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+    --breakpoint-sm: 1400px;
+
+    --color-hover-1: #F1F2F3;
+
+    --color-icon-1: #61666D;
+    --color-icon-2: #c9ccd0;
+
+    --color-dropdown-bg-1: #FFFFFF;
+
+    --color-border-1: #E3E5E7;  /* dropdown */
+    --color-border-2: #F4F4F4;  /* sidebar */
+
+    --color-text-1: #61666D;
+    --color-text-2: #9499A0;
+    --color-text-3: #999999;
+    --color-text-4: #212121;
+    --color-text-5: #505050;
+    --color-text-6: #99a2aa;
+    --color-text-7: #6d757a;
+    --color-text-8: #18191c;
+    --color-text-9: #f25d81;
+
+    --color-blue-1: #00a1d6;
+    --color-blue-2: #00aeec;
+    --color-blue-3: #dff6fd;
+
+    --color-gray-1: #e7e7e7;
+    --color-gray-2: #757575;
+    --color-gray-3: #f6f7f8;
+    --color-gray-4: #61666D;
+    --color-gray-5: #505064;
+    --color-gray-6: #00d0d7;
+
+    --color-table-title-text: #71717a;
+    --color-table-row-text: #11181c;
+    --color-table-title: #F4F4F5;
+    --shadow-table-wrapper: 0px 0px 5px 0px rgba(0,0,0,.02),0px 2px 10px 0px rgba(0,0,0,.06),0px 0px 1px 0px rgba(0,0,0,.3);
+
+    
+    --color-bg-1: #FAFAFA;
+
+    --color-success: #43ce5b;
+
+    --color-cropper: #f69;
+
+    /* oklch 适配 */
+    --color-[#fb2c36]: #fb2c36;
+}
+
+html {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE 和 Edge */
+    font:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+::-webkit-scrollbar {
+    display: none;
+}

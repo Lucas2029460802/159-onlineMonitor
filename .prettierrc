@@ -1,0 +1,23 @@
+{
+  "printWidth": 80,
+  "semi": true,
+  "tabWidth": 4,
+  "useTabs": false,
+  "singleQuote": false,
+  "jsxSingleQuote": false,
+  "endOfLine": "auto",
+  "trailingComma": "all",
+  "arrowParens": "always",
+  "htmlWhitespaceSensitivity": "strict",
+  "overrides": [
+    {
+      "files": "*.svg",
+      "options": {
+        "printWidth": 80,     
+        "singleQuote": false, 
+        "jsxBracketSameLine": true,
+        "semi": false        
+      }
+    }
+  ]
+}
