@@ -1,4 +1,4 @@
-# Rsbuild project
+# 159-onlineMonitor
 
 ## Setup
 
@@ -27,5 +27,3 @@ Preview the production build locally:
 ```bash
 pnpm preview
 ```
-
-npm run dev > ./eye-frontend.log 2>&1 < /dev/null & disown
