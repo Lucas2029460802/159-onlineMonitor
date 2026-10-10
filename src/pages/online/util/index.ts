@@ -27,6 +27,10 @@ export function convertCertainSvInfo2SvInfo(
         line_points_entrance: c.line_points_entrance,
         line_points_out_in2out: c.line_points_out_in2out,
         people_flow_status: c.people_flow_status,
+        channelState:
+            c.state === "paused" || (c as { State?: string }).State === "paused"
+                ? "paused"
+                : "running",
     };
 }
 

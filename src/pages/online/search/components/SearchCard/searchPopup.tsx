@@ -61,9 +61,7 @@ export const SearchPopup: React.FC<ImageDetailPopupProps> = ({
 
     const saveImage = async () => {
         try {
-            const res = await fetch(onlineEventMediaUrl(activePath), {
-                credentials: "include",
-            });
+            const res = await fetch(onlineEventMediaUrl(activePath));
             if (!res.ok) throw new Error("download failed");
             const blob = await res.blob();
             const a = document.createElement("a");

@@ -152,12 +152,21 @@ export default function OnlineSearch() {
     };
 
     const [timeStamp, setTimeStamp] = useState(0);
-    const refresh = () => setTimeStamp((prev) => prev + 1);
     const { loading: searchResLoading, data: searchRes } =
         useFetch<SearchDataRes>(false, getSearchItems, filterTarget, timeStamp);
 
+    // 上一次 GET 未返回前不叠加刷新（定时器与手动 refresh 共用）
+    const searchLoadingRef = useRef(searchResLoading);
+    searchLoadingRef.current = searchResLoading;
+
+    const refresh = () => {
+        if (searchLoadingRef.current) return;
+        setTimeStamp((prev) => prev + 1);
+    };
+
     useEffect(() => {
         const timer = window.setInterval(() => {
+            if (searchLoadingRef.current) return;
             setTimeStamp((prev) => prev + 1);
         }, 5000);
         return () => window.clearInterval(timer);

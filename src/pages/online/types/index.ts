@@ -45,4 +45,15 @@ export type SurveillanceCameraInfo = {
     people_flow_status: boolean;
     line_points_entrance: [[number, number], [number, number]][] | null; // 3条线
     line_points_out_in2out: [[number, number], [number, number]] | null;
+    /** 数据库中的用户设置，默认 running */
+    channelState: "running" | "paused";
+    /** 最近一次状态接口确认的运行情况；缺失时还不能显示「已暂停」 */
+    lifecycleStatus?:
+        | "pausing"
+        | "paused"
+        | "started"
+        | "running"
+        | "stopped"
+        | "stream_release_pending"
+        | "unknown";
 };

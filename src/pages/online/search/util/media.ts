@@ -1,8 +1,13 @@
 import { SearchCardItem, SearchMediaGenre, SearchOne } from "@/api/type";
 
-const STORED_ROOTS = ["/data/resources/online/", "/media/online/"];
+const STORED_ROOTS = [
+    "/data/resources/online/",
+    "/media/online/",
+    "data/resources/online/",
+    "media/online/",
+];
 
-/** 列表里的 url / instances 原值，去掉共享目录前缀，保留相对路径 */
+/** 列表里的 url / instances 原值，去掉目录前缀，保留相对路径键 */
 export function onlineEventMediaKey(path: string): string {
     if (!path) return "";
     let key = path.trim().replace(/\\/g, "/");
@@ -26,11 +31,20 @@ export function onlineEventMediaKey(path: string): string {
     return key.replace(/^\/+/, "");
 }
 
+/**
+ * 与离线大图类似：用相对路径直接取图。
+ * 同源部署下由前端静态目录映射到 /data/resources/online，不再走 Go screenshot 接口。
+ * 例：online_xxx/fullImage/gif/1.webp → /media/online/online_xxx/fullImage/gif/1.webp
+ */
 export function onlineEventMediaUrl(path: string): string {
     const key = onlineEventMediaKey(path);
     if (!key) return "";
-    const imagePath = encodeURIComponent(key).replace(/%2F/gi, "/");
-    return `/api/video/online/event/screenshot?image_path=${imagePath}`;
+    // 与离线 `api/video/screenshot?image_path=${src}` 一样保留路径斜杠，仅编码必要字符
+    const safe = key
+        .split("/")
+        .map((seg) => encodeURIComponent(seg))
+        .join("/");
+    return `/media/online/${safe}`;
 }
 
 /** 按静/动模式把事件列表适配为卡片数据 */

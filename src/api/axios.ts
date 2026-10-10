@@ -1,6 +1,24 @@
-import axios, { AxiosInstance } from "axios";
+import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
 
 import { Message } from "@/util/ui";
+
+declare module "axios" {
+    export interface AxiosRequestConfig {
+        /** 为 true 时不弹出全局错误提示，供状态轮询使用 */
+        skipErrorMessage?: boolean;
+    }
+}
+
+function isOnlineLifecycleRequest(url?: string) {
+    if (!url) return false;
+    return (
+        url.includes("video/online/channel/pause") ||
+        url.includes("video/online/channel/resume") ||
+        url.includes("video/online/channel/state") ||
+        url.includes("video/online/task/pause") ||
+        url.includes("video/online/task/resume")
+    );
+}
 
 function createAxiosInstance(baseURL: string, timeout: number): AxiosInstance {
     const instance = axios.create({
@@ -52,21 +70,31 @@ function createAxiosInstance(baseURL: string, timeout: number): AxiosInstance {
         },
         (err) => {
             console.log(err);
-            if (err.response.status === 401 || err.response.status === 422) {
+            const config = err.config as AxiosRequestConfig | undefined;
+            const status = err.response?.status as number | undefined;
+            // 通道暂停/恢复用 422 表示策略不兼容，不能按登录失效处理
+            if (
+                status === 401 ||
+                (status === 422 && !isOnlineLifecycleRequest(config?.url))
+            ) {
                 localStorage.setItem("token", "");
                 if (window.location.pathname !== "/login") {
                     window.location.href = "/login";
                 }
                 return Promise.reject(err);
             }
-            const message =
-                err.response.data.Message ?? err.response.data.message;
-            Message.danger(
-                "error info",
-                message !== undefined
-                    ? message
-                    : "未知错误: " + err.response.data,
-            );
+            if (!config?.skipErrorMessage) {
+                const message =
+                    err.response?.data?.Message ?? err.response?.data?.message;
+                Message.danger(
+                    "error info",
+                    message !== undefined
+                        ? message
+                        : err.response
+                          ? "未知错误: " + err.response.data
+                          : "网络错误",
+                );
+            }
             return Promise.reject(err);
         },
     );

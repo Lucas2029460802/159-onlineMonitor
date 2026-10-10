@@ -3,6 +3,8 @@ import { defineConfig } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
 import { pluginSvgr } from "@rsbuild/plugin-svgr";
 
+import { setupOnlineMediaMiddlewares } from "./scripts/online-media-middleware.mjs";
+
 export default defineConfig({
     plugins: [pluginReact(), pluginSvgr()],
     html: {
@@ -18,6 +20,10 @@ export default defineConfig({
                 type: "css",
             },
         ],
+    },
+    // 实时监测：/media/online/* → /data/resources/online（dev / preview 均生效）
+    dev: {
+        setupMiddlewares: [setupOnlineMediaMiddlewares],
     },
     server: {
         port: 8031,

@@ -413,6 +413,8 @@ export type CertainSvInfo = {
     people_flow_status: boolean;
     line_points_entrance: [[number, number], [number, number]][] | null;
     line_points_out_in2out: [[number, number], [number, number]] | null;
+    /** 用户暂停设置：running / paused。与摄像头 status（ON/OFF）不是同一字段。 */
+    state?: ChannelLifecycleState;
 };
 
 export type AllSvInfo = {
@@ -444,10 +446,51 @@ export type GetPeopleCountRes = {
     Data: PeopleCountStats;
 };
 
+export type ChannelLifecycleState = "running" | "paused";
+
+export type ChannelRuntimeStatus =
+    | "pausing"
+    | "paused"
+    | "started"
+    | "running"
+    | "stopped"
+    | "stream_release_pending"
+    | "unknown";
+
+export type GroupSettingState = "running" | "paused" | "mixed" | "empty";
+
+/** 暂停/恢复接口确认的单通道结果。state 是数据库设置，status 是本次运行情况。 */
+export type ChannelLifecycleResult = {
+    id: number;
+    state?: ChannelLifecycleState;
+    status?: ChannelRuntimeStatus;
+    error?: string;
+};
+
+export type ChannelLifecycleRes = {
+    Message: string;
+    Data: ChannelLifecycleResult;
+};
+
+export type GroupLifecycleResult = {
+    group_id?: number;
+    channels?: ChannelLifecycleResult[];
+    failed?: ChannelLifecycleResult[];
+};
+
+export type GroupLifecycleRes = {
+    Message: string;
+    Data: GroupLifecycleResult;
+};
+
 export type GroupInfo = {
     Id: number;
     Name: string;
     Num: number;
+    /** 用户设置汇总，不是健康状态 */
+    state?: GroupSettingState;
+    running_count?: number;
+    paused_count?: number;
 };
 export type GetAllGroupsRes = {
     Message: string;

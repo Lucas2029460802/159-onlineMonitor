@@ -28,6 +28,8 @@ import {
     GetWebrtcSrcRes,
     GetPeopleCountRes,
     GetAllGroupsRes,
+    ChannelLifecycleRes,
+    GroupLifecycleRes,
     TableDataRes,
     AlertDataRes,
     GetPeopleCountSummaryRes,
@@ -1003,6 +1005,26 @@ const online = {
     },
     async deleteGroup(groupId: number) {
         return instance.delete(`/video/online/task/del?group_id=${groupId}`);
+    },
+    pauseChannel(id: number): Promise<ChannelLifecycleRes> {
+        return instance.post("video/online/channel/pause", { id });
+    },
+    resumeChannel(id: number): Promise<ChannelLifecycleRes> {
+        return instance.post("video/online/channel/resume", { id });
+    },
+    getChannelState(id: number, quiet = false): Promise<ChannelLifecycleRes> {
+        return instance.get("video/online/channel/state", {
+            params: { id },
+            skipErrorMessage: quiet,
+        });
+    },
+    pauseGroup(groupId: number): Promise<GroupLifecycleRes> {
+        return instance.post("video/online/task/pause", { group_id: groupId });
+    },
+    resumeGroup(groupId: number): Promise<GroupLifecycleRes> {
+        return instance.post("video/online/task/resume", {
+            group_id: groupId,
+        });
     },
 };
 
