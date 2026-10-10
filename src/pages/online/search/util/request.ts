@@ -117,25 +117,44 @@ function normalizeSearchItem(raw: any) {
     };
 }
 
-export async function getSearchItems(
-    t: FilterTarget,
-    timeStamp: number,
-): Promise<SearchDataRes> {
-    const {
-        groupId,
-        channelId,
-        evtType,
-        startTime,
-        endTime,
-        page,
-        size,
-        keywords,
-    } = t;
-    void timeStamp;
+const GROUP_STORAGE_KEY = "online-search-group-id";
+
+export function hasSelectedGroup(groupId: string) {
+    const id = Number(groupId);
+    return Number.isFinite(id) && id > 0;
+}
+
+export function readStoredGroupId(): string {
+    try {
+        const id = localStorage.getItem(GROUP_STORAGE_KEY) ?? "";
+        return hasSelectedGroup(id) ? id : "";
+    } catch {
+        return "";
+    }
+}
+
+export function storeGroupId(groupId: string) {
+    try {
+        if (hasSelectedGroup(groupId)) {
+            localStorage.setItem(GROUP_STORAGE_KEY, groupId);
+            return;
+        }
+        localStorage.removeItem(GROUP_STORAGE_KEY);
+    } catch {
+        // 隐私模式等无法写本地存储时，仍允许当次选择
+    }
+}
+
+export async function getSearchItems(t: FilterTarget): Promise<SearchDataRes> {
+    const { groupId, evtType, startTime, endTime, page, size, keywords } = t;
+
+    if (!hasSelectedGroup(groupId)) {
+        return { Message: "", Data: { list: [], total: 0 } };
+    }
 
     const res = await api.online.getSearchData({
         group_id: groupId,
-        video_id: channelId,
+        video_id: -1,
         evtType: evtType,
         keywords,
         start_time: startTime,

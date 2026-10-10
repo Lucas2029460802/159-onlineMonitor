@@ -2,12 +2,7 @@ import { useContext } from "react";
 import { Outlet } from "react-router-dom";
 import { NavLink } from "react-router-dom";
 
-import {
-    IconLogout,
-    IconOffline,
-    IconSetting,
-    IconUsers,
-} from "@/assets/svg";
+import { IconLogout, IconSetting, IconUsers } from "@/assets/svg";
 import { ConfirmContext } from "@/components/confirm";
 import { Message } from "@/components/message";
 import { OnlineSideMenu } from "@/layout/online/onlineSideMenu";
@@ -96,11 +91,6 @@ export const BaseLayout = () => {
                 </div>
                 <div className="h-px bg-white/10 mx-2" />
                 <ul className="w-full mt-4 flex flex-col gap-2 flex-1">
-                    <SideBarItem
-                        to="/offline"
-                        Svg={IconOffline}
-                        text="离线分析"
-                    />
                     <OnlineSideMenu />
                     {role === UserRoles.Admin && (
                         <SideBarItem

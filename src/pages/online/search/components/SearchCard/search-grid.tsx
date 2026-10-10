@@ -9,13 +9,13 @@ import { SearchCardItem, SearchDataRes, SearchMediaGenre } from "@/api/type";
 import LazyImage from "@/components/image";
 
 interface SearchGridProps {
+    idle?: boolean;
     loading: boolean;
     data: SearchDataRes | null;
     genre: SearchMediaGenre;
     showTime: boolean;
     sortOrder: number;
     sortFieldId: number;
-    refresh: () => void;
 }
 
 function sortCards(
@@ -42,15 +42,14 @@ function sortCards(
 }
 
 export function SearchGrid({
+    idle = false,
     loading,
     data,
     genre,
     showTime,
     sortOrder,
     sortFieldId,
-    refresh,
 }: SearchGridProps) {
-    void refresh;
     const [curCard, setCurCard] = useState<SearchCardItem | null>(null);
     const [show, setShow] = useState(false);
 
@@ -59,6 +58,16 @@ export function SearchGrid({
         const adapted = adaptSearchListToCards(data.Data.list, genre);
         return sortCards(adapted, sortOrder, sortFieldId);
     }, [data, genre, sortOrder, sortFieldId]);
+
+    if (idle) {
+        return (
+            <div className="h-[30vh] flex justify-center items-center mt-30">
+                <div className="text-gray-400 text-xl text-center">
+                    请选择分组
+                </div>
+            </div>
+        );
+    }
 
     if (loading && !data) {
         return (

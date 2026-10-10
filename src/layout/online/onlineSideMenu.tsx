@@ -4,7 +4,6 @@ import { NavLink, useLocation } from "react-router-dom";
 
 import {
     IconOnline,
-    IconPeopleCount,
     IconRealtime,
     IconSetAlg,
     IconSurveillance,
@@ -18,7 +17,6 @@ const ONLINE_SUB_ROUTES = [
     },
     { path: "alg-set", label: "算法布控", Icon: IconSetAlg },
     { path: "search", label: "实时监测", Icon: IconRealtime },
-    { path: "people-count", label: "人流统计", Icon: IconPeopleCount },
 ] as const;
 
 export const OnlineSideMenu = () => {

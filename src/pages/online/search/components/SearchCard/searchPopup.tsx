@@ -50,7 +50,7 @@ export const SearchPopup: React.FC<ImageDetailPopupProps> = ({
         if (!show) return;
         const preferred =
             initialImagePath ||
-            (genre === "gif" ? curImgInfo.url : instances[0] || curImgInfo.url);
+            (genre === "gif" ? curImgInfo.url : instances[0] || "");
         setActivePath(preferred);
     }, [show, initialImagePath, genre, curImgInfo.url, instances]);
 

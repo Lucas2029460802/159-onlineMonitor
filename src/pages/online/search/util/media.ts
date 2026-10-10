@@ -53,24 +53,18 @@ export function adaptSearchListToCards(
     genre: SearchMediaGenre,
 ): SearchCardItem[] {
     if (genre === "gif") {
-        return list.map((event) => ({
-            key: `gif-${event.id}-${event.event_id ?? event.url}`,
-            imagePath: event.url,
-            event,
-        }));
+        return list
+            .filter((event) => event.url)
+            .map((event) => ({
+                key: `gif-${event.id}-${event.event_id ?? event.url}`,
+                imagePath: event.url,
+                event,
+            }));
     }
 
     const cards: SearchCardItem[] = [];
     for (const event of list) {
         const instances = event.instances?.filter(Boolean) ?? [];
-        if (instances.length === 0) {
-            cards.push({
-                key: `png-${event.id}-url`,
-                imagePath: event.url,
-                event,
-            });
-            continue;
-        }
         instances.forEach((path, instanceIndex) => {
             cards.push({
                 key: `png-${event.id}-${instanceIndex}-${path}`,

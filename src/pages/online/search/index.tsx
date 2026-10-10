@@ -1,19 +1,23 @@
+import dayjs from "dayjs";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import dayjs from "dayjs";
 
 import CategoryGroup from "./components/CategoryGroup";
-import { FilterOptions } from "./components/Filter";
 import OrderShowtimeGroup from "./components/OrderShowtimeGroup";
 import PicGenreToggle from "./components/PicGenreToggle";
 import { SearchGrid } from "./components/SearchCard/search-grid";
-import { getGroupOptions, getSearchItems } from "./util/request";
+import {
+    getSearchItems,
+    hasSelectedGroup,
+    readStoredGroupId,
+    storeGroupId,
+} from "./util/request";
 
 import { SearchDataRes, SearchMediaGenre } from "@/api/type";
 import { IconSearch } from "@/assets/svg";
 import { Pagination } from "@/components/pagination";
-import { useFetch } from "@/hooks/useFetch";
 import type { TimeRange } from "@/pages/bigpic/components/grid";
+import { Message } from "@/util/ui";
 
 const EventTypeValues = [
     "all",
@@ -24,7 +28,7 @@ const EventTypeValues = [
     "face",
 ] as const;
 
-function isEventType(x: any): x is EventType {
+function isEventType(x: string | null): x is EventType {
     return EventTypeValues.includes(x);
 }
 function isMediaGenre(x: string | null): x is SearchMediaGenre {
@@ -67,10 +71,13 @@ export default function OnlineSearch() {
         const urlGenre = searchParams.get("genre");
         const start = searchParams.get("startTime");
         const end = searchParams.get("endTime");
+        const urlGroupId = searchParams.get("groupId") ?? "";
         return {
-            groupId: searchParams.get("groupId") ?? "-1",
-            channelId: searchParams.get("channelId") ?? "-1",
-            keywords: searchParams.get("keywords") ?? "",
+            groupId: hasSelectedGroup(urlGroupId)
+                ? urlGroupId
+                : readStoredGroupId(),
+            channelId: "-1",
+            keywords: "",
             evtType: isEventType(urlEvtType) ? urlEvtType : "all",
             startTime: start ? new Date(start) : null,
             endTime: end ? new Date(end) : null,
@@ -81,9 +88,7 @@ export default function OnlineSearch() {
             sortFieldId: Number(searchParams.get("sort_field_id") ?? 0),
         };
     });
-    const [searchKeywords, setSearchKeywords] = useState(
-        filterTarget.keywords,
-    );
+    const [searchKeywords, setSearchKeywords] = useState("");
     const gridRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -125,23 +130,11 @@ export default function OnlineSearch() {
         setSearchParams(params);
     }, [filterTarget, setSearchParams]);
 
-    const { data: groupOptions } = useFetch<FilterOptions>(
-        false,
-        getGroupOptions,
-    );
-
-    // 关键词检索需要有效分组；无指定通道时用第一个分组，否则保持 -1
     useEffect(() => {
-        if (!groupOptions || groupOptions.length === 0) return;
-        const first = String(groupOptions[0].value);
-        setFilterTarget((prev) => {
-            if (prev.channelId !== "-1") return prev;
-            if (prev.keywords.trim() && (prev.groupId === "" || prev.groupId === "-1")) {
-                return { ...prev, groupId: first };
-            }
-            return prev;
-        });
-    }, [groupOptions, filterTarget.keywords, filterTarget.channelId]);
+        storeGroupId(filterTarget.groupId);
+    }, [filterTarget.groupId]);
+
+    const groupSelected = hasSelectedGroup(filterTarget.groupId);
 
     const onChange: ChangeFilter = (key, value) => {
         setFilterTarget((prev) => ({
@@ -151,26 +144,47 @@ export default function OnlineSearch() {
         }));
     };
 
-    const [timeStamp, setTimeStamp] = useState(0);
-    const { loading: searchResLoading, data: searchRes } =
-        useFetch<SearchDataRes>(false, getSearchItems, filterTarget, timeStamp);
-
-    // 上一次 GET 未返回前不叠加刷新（定时器与手动 refresh 共用）
-    const searchLoadingRef = useRef(searchResLoading);
-    searchLoadingRef.current = searchResLoading;
-
-    const refresh = () => {
-        if (searchLoadingRef.current) return;
-        setTimeStamp((prev) => prev + 1);
-    };
+    const [searchResLoading, setSearchResLoading] = useState(false);
+    const [searchRes, setSearchRes] = useState<SearchDataRes | null>(null);
+    const filterRef = useRef(filterTarget);
+    filterRef.current = filterTarget;
+    const queryKey = [
+        filterTarget.groupId,
+        filterTarget.evtType,
+        filterTarget.keywords,
+        filterTarget.page,
+        filterTarget.size,
+        filterTarget.startTime?.getTime() ?? "",
+        filterTarget.endTime?.getTime() ?? "",
+    ].join("|");
+    const loadedKeyRef = useRef("");
 
     useEffect(() => {
-        const timer = window.setInterval(() => {
-            if (searchLoadingRef.current) return;
-            setTimeStamp((prev) => prev + 1);
-        }, 5000);
-        return () => window.clearInterval(timer);
-    }, []);
+        const current = filterRef.current;
+        if (!hasSelectedGroup(current.groupId)) {
+            loadedKeyRef.current = "";
+            setSearchRes(null);
+            setSearchResLoading(false);
+            return;
+        }
+        let cancelled = false;
+        if (loadedKeyRef.current !== queryKey) setSearchRes(null);
+        setSearchResLoading(true);
+        getSearchItems(current)
+            .then((res) => {
+                if (cancelled) return;
+                loadedKeyRef.current = queryKey;
+                setSearchRes(res);
+                setSearchResLoading(false);
+            })
+            .catch(() => {
+                if (cancelled) return;
+                setSearchResLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [queryKey]);
 
     const searchBtn = useRef<HTMLButtonElement>(null);
     useEffect(() => {
@@ -181,12 +195,16 @@ export default function OnlineSearch() {
         return () => window.removeEventListener("keydown", triggerSearch);
     }, []);
 
-    const total = searchRes?.Data?.total ?? 0;
+    const total = groupSelected ? (searchRes?.Data?.total ?? 0) : 0;
     const genreCount = {
         png:
-            filterTarget.genre === "png" && !searchResLoading ? total : null,
+            groupSelected && filterTarget.genre === "png" && !searchResLoading
+                ? total
+                : null,
         gif:
-            filterTarget.genre === "gif" && !searchResLoading ? total : null,
+            groupSelected && filterTarget.genre === "gif" && !searchResLoading
+                ? total
+                : null,
     };
 
     return (
@@ -207,9 +225,13 @@ export default function OnlineSearch() {
                         className="bg-[rgb(0,174,236)] text-white px-5 w-25 h-full hover:bg-[rgb(64,197,241)] transition rounded-xl cursor-pointer"
                         ref={searchBtn}
                         onClick={() => {
+                            if (!hasSelectedGroup(filterTarget.groupId)) {
+                                Message.warning("", "请先选择分组");
+                                return;
+                            }
                             setFilterTarget((prev) => ({
                                 ...prev,
-                                keywords: searchKeywords,
+                                keywords: searchKeywords.trim(),
                                 page: 0,
                             }));
                         }}
@@ -253,12 +275,12 @@ export default function OnlineSearch() {
                     }}
                     timeRange={timeRange}
                     setTimeRange={setTimeRange}
-                    videoId={Number(filterTarget.channelId)}
-                    onVideoChange={(videoId) => {
+                    groupId={filterTarget.groupId}
+                    onGroupChange={(groupId) => {
                         setFilterTarget((prev) => ({
                             ...prev,
-                            channelId: String(videoId),
-                            groupId: videoId === -1 ? prev.groupId || "-1" : "-1",
+                            groupId,
+                            channelId: "-1",
                             page: 0,
                         }));
                     }}
@@ -267,17 +289,17 @@ export default function OnlineSearch() {
 
             <div ref={gridRef}>
                 <SearchGrid
-                    loading={searchResLoading}
-                    data={searchRes}
+                    idle={!groupSelected}
+                    loading={groupSelected && searchResLoading}
+                    data={groupSelected ? searchRes : null}
                     genre={filterTarget.genre}
                     showTime={showTime}
                     sortOrder={filterTarget.sortOrder}
                     sortFieldId={filterTarget.sortFieldId}
-                    refresh={refresh}
                 />
             </div>
 
-            {searchRes && searchRes.Data.total !== 0 && (
+            {groupSelected && searchRes && searchRes.Data.total !== 0 && (
                 <div className="flex justify-center mt-[50px]">
                     <Pagination
                         total={Math.ceil(searchRes.Data.total / PERPAGE)}

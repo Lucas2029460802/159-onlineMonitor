@@ -1,10 +1,10 @@
 import React from "react";
 import { twMerge } from "tailwind-merge";
 
-import VideoSelector from "./VideoSelector";
+import GroupSelector from "./GroupSelector";
 
-import { RangeTimePicker } from "@/pages/bigpic/components/time-picker";
 import type { TimeRange } from "@/pages/bigpic/components/grid";
+import { RangeTimePicker } from "@/pages/bigpic/components/time-picker";
 
 type OrderShowtimeGroupProps = {
     setShowTime: (val: boolean) => void;
@@ -14,8 +14,8 @@ type OrderShowtimeGroupProps = {
     onSortChange: (sortOrder: number, sortFieldID: number) => void;
     timeRange: TimeRange;
     setTimeRange: React.Dispatch<React.SetStateAction<TimeRange>>;
-    videoId: number;
-    onVideoChange: (videoId: number) => void;
+    groupId: string;
+    onGroupChange: (groupId: string) => void;
 };
 
 export default function OrderShowtimeGroup({
@@ -26,8 +26,8 @@ export default function OrderShowtimeGroup({
     onSortChange,
     timeRange,
     setTimeRange,
-    videoId,
-    onVideoChange,
+    groupId,
+    onGroupChange,
 }: OrderShowtimeGroupProps) {
     return (
         <div
@@ -98,7 +98,7 @@ export default function OrderShowtimeGroup({
                     value={timeRange}
                 />
             </div>
-            <VideoSelector value={videoId} onChange={onVideoChange} />
+            <GroupSelector value={groupId} onChange={onGroupChange} />
         </div>
     );
 }

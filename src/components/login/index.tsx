@@ -125,8 +125,7 @@ export const Login: FC = () => {
     }, [inputUsername, inputPassword]);
 
     useEffect(() => {
-        // 登录后跳转到离线分析页面
-        if (login) navigate("/offline/tasks");
+        if (login) navigate("/online/surveillance-manage");
     }, [login]);
 
     return (
@@ -244,8 +243,7 @@ export const Login: FC = () => {
                                     draft.login = true;
                                     draft.messageDisplay = false;
                                 });
-                                // 登录后跳转到离线分析页面
-                                navigate("/offline/tasks");
+                                navigate("/online/surveillance-manage");
                             }}
                         >
                             立即登录

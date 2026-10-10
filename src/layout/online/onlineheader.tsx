@@ -6,7 +6,6 @@ const routeMap = new Map<string, string>([
     ["alg-set", "算法布控"],
     ["search", "实时监测"],
     ["surveillance-manage", "监控总览"],
-    ["people-count", "人流统计"],
 ]);
 
 export const OnlineHeader = () => {

@@ -879,22 +879,24 @@ const online = {
             size,
         } = params;
 
-        // 发起请求
+        const query: Record<string, string | number> = {
+            group_id: group_id,
+            video_id: video_id,
+            evtType,
+            index,
+            size,
+        };
+        const keyword = keywords.trim();
+        if (keyword) query.keywords = keyword;
+        if (start_time) {
+            query.start_time = dayjs(start_time).format("YYYY-MM-DD HH:mm:ss");
+        }
+        if (end_time) {
+            query.end_time = dayjs(end_time).format("YYYY-MM-DD HH:mm:ss");
+        }
+
         return instance.get("/video/online/search", {
-            params: {
-                group_id,
-                video_id,
-                evtType,
-                keywords,
-                start_time: start_time
-                    ? dayjs(start_time).format("YYYY-MM-DD HH:mm:ss")
-                    : null,
-                end_time: end_time
-                    ? dayjs(end_time).format("YYYY-MM-DD HH:mm:ss")
-                    : null,
-                index,
-                size,
-            },
+            params: query,
         });
     },
 
