@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import {
-    strategyReverseMap,
-    SurveillanceCameraInfo,
-    svStrategy,
-} from "../types";
+import { SurveillanceCameraInfo, svStrategy } from "../types";
 import { convertCertainSvInfo2SvInfo, mapStrategyName2Id } from "../util";
 import BatchManage from "./components/batchManage";
 import DeleteGroup from "./components/deleteGroup";
@@ -13,11 +9,8 @@ import SvCard from "./components/svCard";
 import {
     applyChannelLifecycle,
     channelActionMessage,
-    groupActionMessage,
     needsLifecyclePoll,
     normalizeChannelResult,
-    normalizeGroupLifecycle,
-    readGroupLifecycleError,
     readLifecyclePayload,
 } from "./lifecycle";
 
@@ -46,7 +39,6 @@ const toTabs = (groupRes: GroupInfo[]): TabItem[] =>
 
 type LifecycleConfirm = {
     action: "暂停" | "恢复";
-    scope: "channel" | "group";
     id: number;
     name: string;
 };
@@ -163,24 +155,6 @@ export default function SurveillanceManage() {
         }
     };
 
-    const onUpdateStrategies = async (svId: string, sts: svStrategy[]) => {
-        setCurSvGroup((prev) =>
-            prev.map((item) => {
-                if (item.svId !== svId) return item;
-                else {
-                    return {
-                        ...item,
-                        appliedStrategies: sts,
-                    };
-                }
-            }),
-        );
-        // 还缺少了向后端发送请求
-        const ids = sts.map((item) => strategyReverseMap[item]);
-        await api.online.updateStrategies(svId, ids);
-        Message.success("", `成功更新监控所应用算法`);
-    };
-
     cardsRef.current = curSvGroup;
     groupsRef.current = groups;
     const currentGroup = groups.find((item) => String(item.Id) === curKey);
@@ -271,64 +245,26 @@ export default function SurveillanceManage() {
         if (!confirm || acting) return;
         setActing(true);
         try {
-            if (confirm.scope === "channel") {
-                const res =
-                    confirm.action === "暂停"
-                        ? await api.online.pauseChannel(confirm.id)
-                        : await api.online.resumeChannel(confirm.id);
-                const result = normalizeChannelResult(res.Data);
-                if (result) {
-                    setCurSvGroup((prev) =>
-                        applyChannelLifecycle(prev, result),
-                    );
-                }
-                Message.success(
-                    "lifecycle",
-                    channelActionMessage(confirm.action, result, res.Message),
-                );
-            } else {
-                const res =
-                    confirm.action === "暂停"
-                        ? await api.online.pauseGroup(confirm.id)
-                        : await api.online.resumeGroup(confirm.id);
-                const { items } = normalizeGroupLifecycle(res.Data);
-                setCurSvGroup((prev) =>
-                    items.reduce(
-                        (list, item) => applyChannelLifecycle(list, item),
-                        prev,
-                    ),
-                );
-                const text = groupActionMessage(
-                    confirm.action,
-                    items,
-                    res.Message,
-                );
-                if (items.some((item) => item.error)) {
-                    Message.warning("lifecycle", text);
-                } else {
-                    Message.success("lifecycle", text);
-                }
+            const res =
+                confirm.action === "暂停"
+                    ? await api.online.pauseChannel(confirm.id)
+                    : await api.online.resumeChannel(confirm.id);
+            const result = normalizeChannelResult(res.Data);
+            if (result) {
+                setCurSvGroup((prev) => applyChannelLifecycle(prev, result));
             }
+            Message.success(
+                "lifecycle",
+                channelActionMessage(confirm.action, result, res.Message),
+            );
             await refreshGroupMeta();
             setConfirm(null);
         } catch (err) {
-            if (confirm.scope === "channel") {
-                const payload = readLifecyclePayload(err);
-                if (payload.data) {
-                    setCurSvGroup((prev) =>
-                        applyChannelLifecycle(prev, payload.data!),
-                    );
-                }
-            } else {
-                const items = readGroupLifecycleError(err);
-                if (items.length > 0) {
-                    setCurSvGroup((prev) =>
-                        items.reduce(
-                            (list, item) => applyChannelLifecycle(list, item),
-                            prev,
-                        ),
-                    );
-                }
+            const payload = readLifecyclePayload(err);
+            if (payload.data) {
+                setCurSvGroup((prev) =>
+                    applyChannelLifecycle(prev, payload.data!),
+                );
             }
         } finally {
             setActing(false);
@@ -352,28 +288,7 @@ export default function SurveillanceManage() {
                     batchManageAddAlg={batchManageAddAlg}
                     batchManageRemoveAlg={batchManageRemoveAlg}
                 />
-                <LifecycleBar
-                    group={currentGroup}
-                    busy={acting}
-                    onPauseGroup={() => {
-                        if (!currentGroup) return;
-                        setConfirm({
-                            action: "暂停",
-                            scope: "group",
-                            id: currentGroup.Id,
-                            name: currentGroup.Name,
-                        });
-                    }}
-                    onResumeGroup={() => {
-                        if (!currentGroup) return;
-                        setConfirm({
-                            action: "恢复",
-                            scope: "group",
-                            id: currentGroup.Id,
-                            name: currentGroup.Name,
-                        });
-                    }}
-                />
+                <LifecycleBar group={currentGroup} />
                 <DeleteGroup
                     onFinish={async () => {
                         setRefreshTS((prev) => prev + 1);
@@ -407,13 +322,9 @@ export default function SurveillanceManage() {
                         <SvCard
                             key={item.svId}
                             svCamInfo={item}
-                            onUpdateStrategies={(sts: svStrategy[]) => {
-                                onUpdateStrategies(item.svId, sts);
-                            }}
                             onPause={() => {
                                 setConfirm({
                                     action: "暂停",
-                                    scope: "channel",
                                     id: Number(item.svId),
                                     name: item.name,
                                 });
@@ -421,7 +332,6 @@ export default function SurveillanceManage() {
                             onResume={() => {
                                 setConfirm({
                                     action: "恢复",
-                                    scope: "channel",
                                     id: Number(item.svId),
                                     name: item.name,
                                 });
@@ -456,10 +366,7 @@ export default function SurveillanceManage() {
                 className="w-[560px] bg-white border-0 rounded-lg"
             >
                 <div className="border-b border-solid border-gray-1 h-16 px-8 flex items-center justify-between">
-                    <div className="text-blue-2">
-                        {confirm?.scope === "group" ? "本组" : "通道"}
-                        {confirm?.action}
-                    </div>
+                    <div className="text-blue-2">通道{confirm?.action}</div>
                     <IconClose
                         className="text-lg text-gray-2 cursor-pointer"
                         onClick={() => {
@@ -473,16 +380,12 @@ export default function SurveillanceManage() {
                     </div>
                     {confirm?.action === "暂停" ? (
                         <p>
-                            将停止录制和重连，并保留通道、分组、算法配置和历史记录。当前片段处理完成后显示「已暂停」。暂停期间的画面不会补录。
-                            {confirm.scope === "group" &&
-                                "本组内此前单独暂停的通道会一起处理。部分通道失败时，其余通道仍会返回各自结果。"}
+                            将仅暂停该通道：停止录制和重连，并保留通道、分组、算法配置和历史记录。当前片段处理完成后显示「已暂停」。暂停期间的画面不会补录，也不会影响同组其他通道。
                         </p>
                     ) : (
                         <p>
-                            将使用原通道和原分组重新拉流。暂停期间的画面不会补录。Worker
+                            将仅恢复该通道：使用原通道和原分组重新拉流。暂停期间的画面不会补录。Worker
                             接受启动后，模型加载和视频流是否正常需要另行确认。
-                            {confirm?.scope === "group" &&
-                                "恢复本组会包含此前单独暂停的通道。"}
                         </p>
                     )}
                     <div className="flex justify-center gap-4 mt-2">
