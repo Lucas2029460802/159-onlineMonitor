@@ -6,6 +6,10 @@ import { SearchMediaGenre } from "@/api/type";
 type PicGenreToggleProps = {
     genre: SearchMediaGenre;
     onChange: (genre: SearchMediaGenre) => void;
+    count: {
+        png: number | null;
+        gif: number | null;
+    };
 };
 
 const ITEMS: { label: string; type: SearchMediaGenre }[] = [
@@ -13,14 +17,21 @@ const ITEMS: { label: string; type: SearchMediaGenre }[] = [
     { label: "动态图", type: "gif" },
 ];
 
+const ref_dist = {
+    png: 0,
+    gif: 10,
+};
+
 export default function PicGenreToggle({
     genre,
     onChange,
+    count,
 }: PicGenreToggleProps) {
     const pngRef = useRef<HTMLLIElement>(null);
     const gifRef = useRef<HTMLLIElement>(null);
     const sliderRef = useRef<HTMLDivElement>(null);
     const [active, setActive] = useState<SearchMediaGenre>(genre);
+    const [showCount, setShowCount] = useState(false);
 
     useEffect(() => {
         setActive(genre);
@@ -30,15 +41,20 @@ export default function PicGenreToggle({
         const activeRef = active === "png" ? pngRef.current : gifRef.current;
         const slider = sliderRef.current;
         if (activeRef && slider) {
-            slider.style.transform = `translateX(${activeRef.offsetLeft}px)`;
+            slider.style.transform = `translateX(${activeRef.offsetLeft + ref_dist[active]}px)`;
         }
     };
 
     useEffect(() => {
+        setShowCount(false);
         moveSlider();
+        const t = window.setTimeout(() => setShowCount(true), 250);
         window.addEventListener("resize", moveSlider);
-        return () => window.removeEventListener("resize", moveSlider);
-    }, [active]);
+        return () => {
+            window.clearTimeout(t);
+            window.removeEventListener("resize", moveSlider);
+        };
+    }, [active, count.png, count.gif]);
 
     return (
         <div className="relative w-fit">
@@ -65,6 +81,13 @@ export default function PicGenreToggle({
                         >
                             {label}
                         </span>
+                        {active === type &&
+                            count[type] !== null &&
+                            showCount && (
+                                <span className="absolute -top-1 -right-1 bg-[#00AEEC] text-white text-xs px-1.5 py-0.5 rounded-full leading-none">
+                                    {count[type]}
+                                </span>
+                            )}
                     </li>
                 ))}
             </ul>

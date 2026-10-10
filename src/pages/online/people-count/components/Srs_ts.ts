@@ -146,6 +146,16 @@ export class SrsRtcPlayerAsync {
     async play(url: string): Promise<Session> {
         const conf = this.__internal.prepareUrl(url);
 
+        // 跨域直连 SRS:1985 时，浏览器常出现 OPTIONS 成功但 POST 被 CORS 挂起。
+        // 开发/同源场景走 /rtc 代理，仅信令走代理，streamurl 仍指向原始 webrtc 地址。
+        const crossOrigin =
+            typeof window !== "undefined" &&
+            conf.urlObject.server &&
+            conf.urlObject.server !== window.location.hostname;
+        const apiUrl = crossOrigin
+            ? `${window.location.origin}/rtc/v1/play/`
+            : conf.apiUrl;
+
         this.pc.addTransceiver("audio", { direction: "recvonly" });
         this.pc.addTransceiver("video", { direction: "recvonly" });
 
@@ -154,21 +164,38 @@ export class SrsRtcPlayerAsync {
 
         const session: Session = await new Promise((resolve, reject) => {
             const data = {
-                api: conf.apiUrl,
+                api: apiUrl,
                 tid: conf.tid,
                 streamurl: conf.streamUrl,
                 clientip: null,
                 sdp: offer.sdp,
             };
             const xhr = new XMLHttpRequest();
+            const timer = window.setTimeout(() => {
+                xhr.abort();
+                reject(new Error("WebRTC play request timeout"));
+            }, 15000);
+            const done = (fn: () => void) => {
+                window.clearTimeout(timer);
+                fn();
+            };
             xhr.onload = () => {
                 if (xhr.readyState !== xhr.DONE) return;
-                if (xhr.status !== 200 && xhr.status !== 201)
-                    return reject(xhr);
-                const resp = JSON.parse(xhr.responseText);
-                return resp.code ? reject(xhr) : resolve(resp);
+                if (xhr.status !== 200 && xhr.status !== 201) {
+                    return done(() => reject(xhr));
+                }
+                try {
+                    const resp = JSON.parse(xhr.responseText);
+                    return done(() =>
+                        resp.code ? reject(xhr) : resolve(resp),
+                    );
+                } catch (e) {
+                    return done(() => reject(e));
+                }
             };
-            xhr.open("POST", conf.apiUrl, true);
+            xhr.onerror = () =>
+                done(() => reject(new Error("WebRTC play network error")));
+            xhr.open("POST", apiUrl, true);
             xhr.setRequestHeader("Content-type", "application/json");
             xhr.send(JSON.stringify(data));
         });

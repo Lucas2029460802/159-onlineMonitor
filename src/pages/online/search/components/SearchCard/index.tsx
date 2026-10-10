@@ -1,74 +1,58 @@
 import { Tooltip } from "antd";
-import { HTMLProps, MouseEventHandler } from "react";
 
-import IconLocation from "../../svg/icon-location.svg?react";
-import IconTime from "../../svg/icon-time.svg?react";
 import { onlineEventMediaUrl } from "../../util/media";
 
+import LazyImage from "@/components/image";
+import { SearchMediaGenre } from "@/api/type";
 import { date2ChineseString } from "@/util/time";
 
-export interface SearchCardProps extends HTMLProps<HTMLDivElement> {
+export interface SearchCardProps {
     time: Date;
     location: string;
-    /** 相对路径，经 online event screenshot 接口读取 */
     imagePath: string;
     hitString: string;
-    tag?: string[];
-    onClick: () => MouseEventHandler<HTMLDivElement> | undefined;
-}
-
-function shortLocation(location: string) {
-    if (!location) return "未知地点";
-    if (location.length <= 20) return location;
-    const parts = location.split("-");
-    if (parts.length >= 2) {
-        return `…${parts[0].slice(-6)}-…${parts[1].slice(-6)}`;
-    }
-    return `${location.slice(0, 8)}…${location.slice(-6)}`;
+    genre: SearchMediaGenre;
+    showTime: boolean;
+    onClick: () => void;
 }
 
 export default function SearchCard({
     time,
     location,
     imagePath,
-    tag,
+    hitString,
+    genre,
+    showTime,
     onClick,
 }: SearchCardProps) {
-    const primaryTag = tag?.[0];
-
     return (
-        <div
-            className="group flex flex-col rounded-2xl border border-[#e8ecf0] bg-white overflow-hidden shadow-[0_2px_10px_rgba(15,23,42,0.04)] hover:shadow-[0_10px_28px_rgba(15,23,42,0.1)] hover:border-[#b6e6f6] transition-all duration-200 cursor-pointer"
-            onClick={onClick}
-        >
-            <div className="relative aspect-[16/10] bg-[#eef1f4] overflow-hidden">
-                <img
-                    src={onlineEventMediaUrl(imagePath)}
-                    alt=""
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                    loading="lazy"
-                />
-                {primaryTag && (
-                    <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/55 text-white text-[11px] backdrop-blur-sm">
-                        {primaryTag}
-                    </span>
-                )}
-            </div>
-
-            <div className="px-3 py-2.5 flex flex-col gap-1 min-w-0">
-                <div className="flex items-center gap-1.5 text-[12px] text-[#8b929a] min-w-0">
-                    <IconTime className="w-3.5 h-3.5 shrink-0 text-[#a0a7b0]" />
-                    <span className="truncate">{date2ChineseString(time)}</span>
-                </div>
-                <Tooltip title={location || "未知地点"}>
-                    <div className="flex items-center gap-1.5 text-[12px] text-[#55acee] min-w-0">
-                        <IconLocation className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">
-                            {shortLocation(location)}
-                        </span>
+        <div>
+            <LazyImage
+                onClick={onClick}
+                src={onlineEventMediaUrl(imagePath)}
+                className="aspect-video bg-[#d1d5dc] flex items-center justify-center cursor-pointer hover:scale-[1.05] hover:z-10 transition-transform rounded-md overflow-hidden relative"
+            >
+                {showTime && (
+                    <div className="absolute left-0 top-0 z-[0] w-full h-6 bg-[linear-gradient(180deg,rgba(0,0,0,0)_0%,rgba(0,0,0,.8)_100%)] pl-1 pb-1.5 opacity-100">
+                        <div className="text-white text-[14px] leading-6 truncate pr-1">
+                            {date2ChineseString(time)}
+                            {location ? ` · ${location}` : ""}
+                        </div>
                     </div>
-                </Tooltip>
-            </div>
+                )}
+            </LazyImage>
+            {hitString !== "" && genre === "png" && (
+                <div className="mt-1 h-8 pr-[30px] box-border w-full break-words text-[15px] font-medium text-ellipsis line-clamp-2 cursor-pointer flex items-center">
+                    <div className="mr-1 w-22 h-full p-2 bg-[#dff6fd] text-sm rounded-md flex justify-center items-center text-[#00aeec] shrink-0 text-[13px]">
+                        命中关键词
+                    </div>
+                    <Tooltip title={hitString}>
+                        <div className="text-[13px] text-[#9499a0] truncate">
+                            {hitString}
+                        </div>
+                    </Tooltip>
+                </div>
+            )}
         </div>
     );
 }

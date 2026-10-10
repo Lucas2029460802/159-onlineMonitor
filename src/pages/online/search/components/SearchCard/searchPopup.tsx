@@ -1,31 +1,22 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { twMerge } from "tailwind-merge";
 
 import { onlineEventMediaUrl } from "../../util/media";
 
 import { SearchMediaGenre, SearchOne } from "@/api/type";
-import { IconClose } from "@/assets/svg";
+import { IconClose, IconDownload } from "@/assets/svg";
 import { Popup } from "@/components/popup";
+import InfoRow from "@/pages/bigpic/components/inforow";
 import { date2ChineseString } from "@/util/time";
+import { Message } from "@/util/ui";
 
 type ImageDetailPopupProps = {
     show: boolean;
     onClose: () => void;
     curImgInfo: SearchOne;
-    /** 打开弹窗时优先展示的媒体路径（静态模式可能是 instance） */
     initialImagePath?: string;
     genre: SearchMediaGenre;
 };
-
-function MetaItem({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="min-w-0">
-            <div className="text-[11px] text-[#9499a0] mb-0.5">{label}</div>
-            <div className="text-[13px] text-[#18191c] break-all leading-5">
-                {value || "无"}
-            </div>
-        </div>
-    );
-}
 
 export const SearchPopup: React.FC<ImageDetailPopupProps> = ({
     show,
@@ -67,101 +58,124 @@ export const SearchPopup: React.FC<ImageDetailPopupProps> = ({
         curImgInfo.tag && curImgInfo.tag.length > 0
             ? curImgInfo.tag.join("、")
             : "无";
-    const frameText =
-        curImgInfo.start !== undefined && curImgInfo.end !== undefined
-            ? `${curImgInfo.start} - ${curImgInfo.end}`
-            : "无";
+
+    const saveImage = async () => {
+        try {
+            const res = await fetch(onlineEventMediaUrl(activePath), {
+                credentials: "include",
+            });
+            if (!res.ok) throw new Error("download failed");
+            const blob = await res.blob();
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download =
+                activePath.split("/").pop() ||
+                (genre === "gif" ? "event.webp" : "event.jpg");
+            a.click();
+            URL.revokeObjectURL(a.href);
+        } catch {
+            Message.warning("请稍后重试", "图片保存失败");
+        }
+    };
 
     return (
-        <Popup show={show} ref={popupRef}>
-            <div className="w-[min(1100px,92vw)] h-[min(860px,90vh)] bg-white rounded-2xl overflow-hidden flex flex-col shadow-2xl">
-                <div className="h-14 shrink-0 border-b border-[#eef1f4] px-5 flex items-center justify-between">
-                    <div className="text-[15px] font-medium text-[#00aeec]">
-                        事件详情
+        <Popup show={show}>
+            <div
+                ref={popupRef}
+                className="w-[85vw] h-[95vh] bg-white rounded-sm overflow-hidden grid grid-rows-[64px_1fr]"
+            >
+                <div className="h-16 border-b border-solid border-gray-1 px-8 flex items-center justify-between">
+                    <div className="text-blue-2 flex items-center">
+                        <span className="w-52">详细图片信息</span>
                     </div>
                     <IconClose
-                        className="text-lg text-gray-2 cursor-pointer hover:text-[#18191c]"
+                        className="text-lg text-gray-2 cursor-pointer"
                         onClick={onClose}
                     />
                 </div>
 
-                <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px]">
-                    {/* 主图区 */}
-                    <div className="min-h-0 bg-[#111827] flex items-center justify-center p-3">
-                        <img
-                            src={onlineEventMediaUrl(activePath)}
-                            className="max-w-full max-h-full object-contain rounded-lg"
-                            alt=""
-                        />
-                    </div>
-
-                    {/* 右侧信息区 */}
-                    <aside className="min-h-0 border-l border-[#eef1f4] flex flex-col bg-[#fafbfc]">
+                <div className="overflow-hidden p-4 flex flex-col h-full gap-4">
+                    <div className="flex-1 min-h-0 flex gap-3 overflow-hidden">
+                        <div className="flex-1 flex items-center justify-center overflow-hidden">
+                            <img
+                                src={onlineEventMediaUrl(activePath)}
+                                className="w-full h-full object-contain bg-[#d1d5dc] rounded-md"
+                                alt=""
+                            />
+                        </div>
                         {mediaOptions.length > 1 && (
-                            <div className="px-4 pt-4 pb-2 shrink-0">
-                                <div className="text-[12px] text-[#9499a0] mb-2">
-                                    关联媒体
-                                </div>
-                                <div className="flex gap-2 overflow-x-auto pb-1">
-                                    {mediaOptions.map((opt) => (
-                                        <button
-                                            key={opt.path + opt.label}
-                                            type="button"
-                                            onClick={() =>
-                                                setActivePath(opt.path)
-                                            }
-                                            className={`shrink-0 w-20 rounded-lg overflow-hidden border-2 transition-colors bg-white ${
-                                                activePath === opt.path
-                                                    ? "border-[#00AEEC]"
-                                                    : "border-transparent hover:border-[#d1d5dc]"
-                                            }`}
-                                        >
-                                            <img
-                                                src={onlineEventMediaUrl(
-                                                    opt.path,
-                                                )}
-                                                className="w-full aspect-video object-cover bg-[#e5e7eb]"
-                                                alt={opt.label}
-                                            />
-                                            <div className="text-[10px] text-center py-0.5 text-[#61666d]">
-                                                {opt.label}
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
+                            <div className="w-28 shrink-0 overflow-y-auto flex flex-col gap-2">
+                                {mediaOptions.map((opt) => (
+                                    <button
+                                        key={opt.path + opt.label}
+                                        type="button"
+                                        onClick={() => setActivePath(opt.path)}
+                                        className={twMerge(
+                                            "rounded-md overflow-hidden border-2 transition-colors",
+                                            activePath === opt.path
+                                                ? "border-[#00AEEC]"
+                                                : "border-transparent hover:border-gray-300",
+                                        )}
+                                    >
+                                        <img
+                                            src={onlineEventMediaUrl(opt.path)}
+                                            className="w-full aspect-video object-cover bg-[#d1d5dc]"
+                                            alt={opt.label}
+                                        />
+                                        <div className="text-[11px] text-center py-1 text-[#61666d]">
+                                            {opt.label}
+                                        </div>
+                                    </button>
+                                ))}
                             </div>
                         )}
+                    </div>
 
-                        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
-                            <div className="grid grid-cols-1 gap-3">
-                                <MetaItem
-                                    label="事件时间"
+                    <div className="w-full shrink-0 bg-white shadow-md rounded-lg border border-[#e5e7eb] px-6 py-3 flex flex-col gap-2">
+                        <div className="flex items-center justify-between gap-4 flex-wrap">
+                            <div className="flex gap-10 flex-wrap min-w-0">
+                                <InfoRow
+                                    label="事件时间："
                                     value={date2ChineseString(curImgInfo.time)}
+                                    width="w-20"
                                 />
-                                <MetaItem
-                                    label="事件地点"
+                                <InfoRow
+                                    label="事件地点："
                                     value={curImgInfo.location || "无"}
+                                    width="w-20"
+                                    popupContainer={popupRef.current}
                                 />
-                                <MetaItem label="类别标签" value={tagText} />
-                                <MetaItem label="帧范围" value={frameText} />
+                                <InfoRow
+                                    label="类别标签："
+                                    value={tagText}
+                                    width="w-20"
+                                />
                                 {curImgInfo.hitString ? (
-                                    <MetaItem
-                                        label="命中关键词"
+                                    <InfoRow
+                                        label="命中关键词："
                                         value={curImgInfo.hitString}
+                                        width="w-22"
+                                        popupContainer={popupRef.current}
                                     />
                                 ) : null}
                             </div>
-
-                            <div className="rounded-xl border border-[#e8ecf0] bg-white p-3">
-                                <div className="text-[12px] text-[#9499a0] mb-1.5">
-                                    事件描述
-                                </div>
-                                <p className="text-[13px] text-[#18191c] leading-6 m-0 whitespace-pre-wrap break-words">
-                                    {curImgInfo.caption?.trim() || "暂无描述"}
-                                </p>
-                            </div>
+                            <button
+                                className="w-[90px] h-[34px] rounded-lg bg-blue-1 flex items-center justify-center text-white gap-1.5 hover:opacity-90 cursor-pointer shrink-0"
+                                onClick={saveImage}
+                            >
+                                <IconDownload className="text-lg" />
+                                <div>保存</div>
+                            </button>
                         </div>
-                    </aside>
+                        {curImgInfo.caption ? (
+                            <InfoRow
+                                label="事件描述："
+                                value={curImgInfo.caption}
+                                width="w-20"
+                                popupContainer={popupRef.current}
+                            />
+                        ) : null}
+                    </div>
                 </div>
             </div>
         </Popup>

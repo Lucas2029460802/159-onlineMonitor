@@ -249,10 +249,20 @@ function ChannelPreview({
                     monitor.parent_id,
                     monitor.device_id,
                 );
-                if (!cancelled) {
-                    setWebRtcSrc(res.Data || "");
-                    if (!res.Data) setStreamError("未获取到预览地址");
+                if (cancelled) return;
+                const raw = res?.Data as unknown;
+                // Data 一般为 webrtc:// 字符串；兼容偶发对象包装
+                let playUrl = "";
+                if (typeof raw === "string") {
+                    playUrl = raw.trim();
+                } else if (raw && typeof raw === "object") {
+                    const obj = raw as Record<string, unknown>;
+                    playUrl = String(
+                        obj.url ?? obj.stream_url ?? obj.Data ?? "",
+                    ).trim();
                 }
+                setWebRtcSrc(playUrl);
+                if (!playUrl) setStreamError("未获取到预览地址");
             } catch {
                 if (!cancelled) {
                     setStreamError("预览流拉取失败，仍可查看封面");
@@ -283,34 +293,31 @@ function ChannelPreview({
                 </div>
             </div>
 
-            <div className="flex-1 min-h-0 bg-[#101828] relative flex items-center justify-center">
+            <div className="flex-1 min-h-0 bg-[#101828] relative overflow-hidden">
                 {!monitor && (
-                    <div className="text-sm text-white/50 flex flex-col items-center gap-2 px-6 text-center">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center text-sm text-white/50">
                         <IconSurveillance className="w-10 h-10 opacity-40" />
                         <span>选择通道后显示预览</span>
                     </div>
                 )}
-                {monitor && (
-                    <>
-                        {webrtcSrc ? (
-                            <PreviewWebRTCPlayer url={webrtcSrc} />
-                        ) : (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                {monitor.view_path ? (
-                                    <img
-                                        src={`/api/video/image?image_path=${encodeURIComponent(monitor.view_path)}`}
-                                        alt=""
-                                        className="max-w-full max-h-full object-contain opacity-90"
-                                    />
-                                ) : null}
-                                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-xs text-white/80 bg-black/50 px-2 py-1 rounded">
-                                    {loadingStream
-                                        ? "正在连接预览流…"
-                                        : streamError || "封面预览"}
-                                </div>
-                            </div>
-                        )}
-                    </>
+                {monitor && !webrtcSrc && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        {monitor.view_path ? (
+                            <img
+                                src={`/api/video/image?image_path=${encodeURIComponent(monitor.view_path)}`}
+                                alt=""
+                                className="max-w-full max-h-full object-contain opacity-90"
+                            />
+                        ) : null}
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-xs text-white/80 bg-black/50 px-2 py-1 rounded">
+                            {loadingStream
+                                ? "正在获取预览地址…"
+                                : streamError || "封面预览"}
+                        </div>
+                    </div>
+                )}
+                {monitor && webrtcSrc && (
+                    <PreviewWebRTCPlayer url={webrtcSrc} />
                 )}
             </div>
 

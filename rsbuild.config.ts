@@ -56,6 +56,12 @@ export default defineConfig({
                     }
                 },
             },
+            // SRS WebRTC 信令（/rtc/v1/play/），避免浏览器直连 1985 触发 CORS 卡住
+            "/rtc": {
+                target: "http://10.176.42.159:1985",
+                changeOrigin: true,
+                secure: false,
+            },
             "/caption-api": {
                 target: "http://10.176.42.159:8020",
                 changeOrigin: true,

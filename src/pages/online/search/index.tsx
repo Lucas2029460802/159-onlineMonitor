@@ -1,20 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import dayjs from "dayjs";
 
-import Fitler, { ChannelRes, FilterOptions } from "./components/Filter";
+import CategoryGroup from "./components/CategoryGroup";
+import { FilterOptions } from "./components/Filter";
+import OrderShowtimeGroup from "./components/OrderShowtimeGroup";
 import PicGenreToggle from "./components/PicGenreToggle";
 import { SearchGrid } from "./components/SearchCard/search-grid";
-import TimeAreaFilter from "./components/TimeArea";
-import {
-    getSearchItems,
-    getChannelOptions,
-    getGroupOptions,
-} from "./util/request";
+import { getGroupOptions, getSearchItems } from "./util/request";
 
 import { SearchDataRes, SearchMediaGenre } from "@/api/type";
 import { IconSearch } from "@/assets/svg";
 import { Pagination } from "@/components/pagination";
 import { useFetch } from "@/hooks/useFetch";
+import type { TimeRange } from "@/pages/bigpic/components/grid";
+
 const EventTypeValues = [
     "all",
     "person",
@@ -23,12 +23,14 @@ const EventTypeValues = [
     "other",
     "face",
 ] as const;
+
 function isEventType(x: any): x is EventType {
     return EventTypeValues.includes(x);
 }
 function isMediaGenre(x: string | null): x is SearchMediaGenre {
     return x === "png" || x === "gif";
 }
+
 export type EventType = (typeof EventTypeValues)[number];
 export interface FilterTarget {
     groupId: string;
@@ -40,6 +42,8 @@ export interface FilterTarget {
     page: number;
     size: number;
     genre: SearchMediaGenre;
+    sortOrder: number;
+    sortFieldId: number;
 }
 export type ChangeFilter = <K extends keyof FilterTarget>(
     key: K,
@@ -47,27 +51,61 @@ export type ChangeFilter = <K extends keyof FilterTarget>(
 ) => void;
 
 const PERPAGE = 20;
+
 export default function OnlineSearch() {
     const [searchParams, setSearchParams] = useSearchParams();
+    const [showTime, setShowTime] = useState(true);
+    const [timeRange, setTimeRange] = useState<TimeRange>(() => {
+        const start = searchParams.get("startTime");
+        const end = searchParams.get("endTime");
+        if (start && end) return [dayjs(start), dayjs(end)];
+        return [undefined, undefined];
+    });
+
     const [filterTarget, setFilterTarget] = useState<FilterTarget>(() => {
         const urlEvtType = searchParams.get("evtType");
         const urlGenre = searchParams.get("genre");
+        const start = searchParams.get("startTime");
+        const end = searchParams.get("endTime");
         return {
-            groupId: searchParams.get("groupId") ?? "",
+            groupId: searchParams.get("groupId") ?? "-1",
             channelId: searchParams.get("channelId") ?? "-1",
             keywords: searchParams.get("keywords") ?? "",
             evtType: isEventType(urlEvtType) ? urlEvtType : "all",
-            startTime: searchParams.get("startTime")
-                ? new Date(searchParams.get("startTime")!)
-                : null,
-            endTime: searchParams.get("endTime")
-                ? new Date(searchParams.get("endTime")!)
-                : null,
+            startTime: start ? new Date(start) : null,
+            endTime: end ? new Date(end) : null,
             page: Number(searchParams.get("page") ?? 0),
             size: PERPAGE,
-            genre: isMediaGenre(urlGenre) ? urlGenre : "gif",
+            genre: isMediaGenre(urlGenre) ? urlGenre : "png",
+            sortOrder: Number(searchParams.get("order") ?? 1),
+            sortFieldId: Number(searchParams.get("sort_field_id") ?? 0),
         };
     });
+    const [searchKeywords, setSearchKeywords] = useState(
+        filterTarget.keywords,
+    );
+    const gridRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const [start, end] = timeRange;
+        const nextStart = start ? start.toDate() : null;
+        const nextEnd = end ? end.toDate() : null;
+        setFilterTarget((prev) => {
+            const sameStart =
+                (prev.startTime?.getTime() ?? null) ===
+                (nextStart?.getTime() ?? null);
+            const sameEnd =
+                (prev.endTime?.getTime() ?? null) ===
+                (nextEnd?.getTime() ?? null);
+            if (sameStart && sameEnd) return prev;
+            return {
+                ...prev,
+                startTime: nextStart,
+                endTime: nextEnd,
+                page: 0,
+            };
+        });
+    }, [timeRange]);
 
     useEffect(() => {
         const params: Record<string, string> = {
@@ -77,82 +115,47 @@ export default function OnlineSearch() {
             keywords: filterTarget.keywords,
             page: filterTarget.page.toString(),
             genre: filterTarget.genre,
+            order: String(filterTarget.sortOrder),
+            sort_field_id: String(filterTarget.sortFieldId),
         };
-
         if (filterTarget.startTime)
             params.startTime = filterTarget.startTime.toISOString();
         if (filterTarget.endTime)
             params.endTime = filterTarget.endTime.toISOString();
-
         setSearchParams(params);
     }, [filterTarget, setSearchParams]);
 
-    const { loading: groupLoading, data: groupOptions } =
-        useFetch<FilterOptions>(false, getGroupOptions);
-
-    useEffect(() => {
-        setFilterTarget((prev) => ({
-            ...prev,
-            groupId:
-                groupOptions && groupOptions.length > 0
-                    ? String(groupOptions[0].value)
-                    : prev.groupId,
-        }));
-    }, [groupOptions]);
-
-    const { loading: channelLoading, data: channelRes } = useFetch<ChannelRes>(
+    const { data: groupOptions } = useFetch<FilterOptions>(
         false,
-        getChannelOptions,
-        filterTarget.groupId,
-        -1, // 可以直接拿到所有数据
+        getGroupOptions,
     );
 
-    // 固定的
-    const evtTypeOptions = [
-        { value: "all", label: "全部" },
-        { value: "person", label: "人" },
-        { value: "car", label: "机动车" },
-        { value: "bike", label: "非机动车" },
-        // { value: "face", label: "人脸" },
-        { value: "other", label: "其它" },
-    ];
+    // 关键词检索需要有效分组；无指定通道时用第一个分组，否则保持 -1
+    useEffect(() => {
+        if (!groupOptions || groupOptions.length === 0) return;
+        const first = String(groupOptions[0].value);
+        setFilterTarget((prev) => {
+            if (prev.channelId !== "-1") return prev;
+            if (prev.keywords.trim() && (prev.groupId === "" || prev.groupId === "-1")) {
+                return { ...prev, groupId: first };
+            }
+            return prev;
+        });
+    }, [groupOptions, filterTarget.keywords, filterTarget.channelId]);
 
     const onChange: ChangeFilter = (key, value) => {
-        console.log(key, value);
-        setFilterTarget((prev) => {
-            const updated = {
-                ...prev,
-                [key]: value,
-                page: 0,
-            };
-            if (key === "groupId") {
-                updated.channelId = "-1";
-            }
-            return updated;
-        });
-    };
-    const j = useRef<Date | null>(null);
-
-    const onChangeTime = (a: Date | null, b: Date | null) => {
-        setFilterTarget((prev) => {
-            console.log("set time了", j.current, j.current === a, a);
-            j.current = a;
-            return {
-                ...prev,
-                startTime: a,
-                endTime: b,
-            };
-        });
+        setFilterTarget((prev) => ({
+            ...prev,
+            [key]: value,
+            page: 0,
+        }));
     };
 
-    const [timeStamp, setTimeStamp] = useState(0); // 用来刷新请求alertRes的timeStamp
-    const refresh = () => {
-        setTimeStamp((prev) => prev + 1);
-    };
+    const [timeStamp, setTimeStamp] = useState(0);
+    const refresh = () => setTimeStamp((prev) => prev + 1);
     const { loading: searchResLoading, data: searchRes } =
         useFetch<SearchDataRes>(false, getSearchItems, filterTarget, timeStamp);
 
-    // 每 5 秒自动刷新实时监测列表
     useEffect(() => {
         const timer = window.setInterval(() => {
             setTimeStamp((prev) => prev + 1);
@@ -160,104 +163,113 @@ export default function OnlineSearch() {
         return () => window.clearInterval(timer);
     }, []);
 
-    const inputVal = useRef("");
     const searchBtn = useRef<HTMLButtonElement>(null);
     useEffect(() => {
         const triggerSearch = (e: KeyboardEvent) => {
             if (e.key === "Enter") searchBtn.current?.click();
         };
         window.addEventListener("keydown", triggerSearch);
-        return () => {
-            window.removeEventListener("keydown", triggerSearch);
-        };
+        return () => window.removeEventListener("keydown", triggerSearch);
     }, []);
 
+    const total = searchRes?.Data?.total ?? 0;
+    const genreCount = {
+        png:
+            filterTarget.genre === "png" && !searchResLoading ? total : null,
+        gif:
+            filterTarget.genre === "gif" && !searchResLoading ? total : null,
+    };
+
     return (
-        <div className="w-full h-full px-6 py-4 overflow-y-scroll">
-            <div className="mb-4 rounded-2xl border border-[#eef1f4] bg-white/90 px-4 py-3 shadow-[0_6px_20px_rgba(15,23,42,0.04)]">
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="relative flex-1 min-w-[220px] max-w-xl flex items-center border border-[#e5e7eb] rounded-xl overflow-hidden h-10 bg-white">
-                        <div className="pl-3 pr-1 text-[#00AEEC]">
-                            <IconSearch />
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="输入搜索关键词..."
-                            className="flex-grow h-full px-2 text-sm focus:outline-none focus:ring-0"
-                            onChange={(e) => {
-                                inputVal.current = e.target.value;
-                            }}
-                            defaultValue={filterTarget.keywords}
-                        />
-                        <button
-                            className="bg-[rgb(0,174,236)] text-white px-4 h-full text-sm hover:bg-[rgb(64,197,241)] transition cursor-pointer"
-                            ref={searchBtn}
-                            onClick={() => {
-                                setFilterTarget((prev) => ({
-                                    ...prev,
-                                    keywords: inputVal.current,
-                                    page: 0,
-                                }));
-                            }}
-                        >
-                            搜索
-                        </button>
+        <div className="w-full min-h-full bg-gray-50 px-16 py-8 overflow-y-scroll">
+            <div className="flex justify-center mb-6 h-12">
+                <div className="relative w-full max-w-160 flex items-center border border-[#d1d5dc] rounded-xl shadow-sm overflow-hidden p-[5px]">
+                    <div className="pl-4 pr-2 text-[#00AEEC]">
+                        <IconSearch />
                     </div>
-                    <Fitler
-                        loading={groupLoading}
-                        options={groupOptions}
-                        value={groupOptions ? filterTarget.groupId : ""}
-                        field={"groupId"}
-                        typeName="组别"
-                        selectClassName="w-36"
-                        onChange={onChange}
-                    ></Fitler>
-                    <Fitler
-                        options={channelRes}
-                        loading={channelLoading}
-                        value={channelRes ? filterTarget.channelId : ""}
-                        field={"channelId"}
-                        typeName="视频流"
-                        selectClassName="w-36"
-                        typeClassName="w-16"
-                        onChange={onChange}
-                    ></Fitler>
-                    <Fitler
-                        options={evtTypeOptions}
-                        field="evtType"
-                        value={filterTarget.evtType}
-                        typeName="类型"
-                        selectClassName="w-28"
-                        onChange={onChange}
-                    ></Fitler>
-                    <TimeAreaFilter
-                        typeName="时间段"
-                        typeClassName="w-16"
-                        startTime={filterTarget.startTime}
-                        endTime={filterTarget.endTime}
-                        onChange={onChangeTime}
-                    ></TimeAreaFilter>
-                    <PicGenreToggle
-                        genre={filterTarget.genre}
-                        onChange={(genre) => {
+                    <input
+                        type="text"
+                        placeholder="输入搜索关键词..."
+                        className="flex-grow py-3 px-2 focus:outline-none focus:ring-0"
+                        value={searchKeywords}
+                        onChange={(e) => setSearchKeywords(e.target.value)}
+                    />
+                    <button
+                        className="bg-[rgb(0,174,236)] text-white px-5 w-25 h-full hover:bg-[rgb(64,197,241)] transition rounded-xl cursor-pointer"
+                        ref={searchBtn}
+                        onClick={() => {
                             setFilterTarget((prev) => ({
                                 ...prev,
-                                genre,
+                                keywords: searchKeywords,
                                 page: 0,
                             }));
                         }}
-                    />
+                    >
+                        搜索
+                    </button>
                 </div>
             </div>
-            <SearchGrid
-                loading={searchResLoading}
-                data={searchRes}
+
+            <PicGenreToggle
                 genre={filterTarget.genre}
-                refresh={refresh}
-            ></SearchGrid>
+                onChange={(genre) => {
+                    setFilterTarget((prev) => ({
+                        ...prev,
+                        genre,
+                        evtType: "all",
+                        page: 0,
+                    }));
+                }}
+                count={genreCount}
+            />
+            <div className="border-b border-solid border-gray-1 mb-5" />
+
+            <div className="gap-4 mb-8">
+                <CategoryGroup
+                    evtType={filterTarget.evtType}
+                    onChange={(type) => onChange("evtType", type)}
+                />
+                <OrderShowtimeGroup
+                    showTime={showTime}
+                    setShowTime={setShowTime}
+                    sortOrder={filterTarget.sortOrder}
+                    sortFieldID={filterTarget.sortFieldId}
+                    onSortChange={(sortOrder, sortFieldId) => {
+                        setFilterTarget((prev) => ({
+                            ...prev,
+                            sortOrder,
+                            sortFieldId,
+                            page: 0,
+                        }));
+                    }}
+                    timeRange={timeRange}
+                    setTimeRange={setTimeRange}
+                    videoId={Number(filterTarget.channelId)}
+                    onVideoChange={(videoId) => {
+                        setFilterTarget((prev) => ({
+                            ...prev,
+                            channelId: String(videoId),
+                            groupId: videoId === -1 ? prev.groupId || "-1" : "-1",
+                            page: 0,
+                        }));
+                    }}
+                />
+            </div>
+
+            <div ref={gridRef}>
+                <SearchGrid
+                    loading={searchResLoading}
+                    data={searchRes}
+                    genre={filterTarget.genre}
+                    showTime={showTime}
+                    sortOrder={filterTarget.sortOrder}
+                    sortFieldId={filterTarget.sortFieldId}
+                    refresh={refresh}
+                />
+            </div>
 
             {searchRes && searchRes.Data.total !== 0 && (
-                <div className="pt-8 w-full flex items-center justify-center">
+                <div className="flex justify-center mt-[50px]">
                     <Pagination
                         total={Math.ceil(searchRes.Data.total / PERPAGE)}
                         defaultValue={1}
@@ -265,6 +277,10 @@ export default function OnlineSearch() {
                         onChange={async (page) => {
                             const actualPage = page - 1;
                             if (actualPage === filterTarget.page) return;
+                            gridRef.current?.scrollTo({
+                                top: 0,
+                                behavior: "smooth",
+                            });
                             setFilterTarget((prev) => ({
                                 ...prev,
                                 page: actualPage,
@@ -273,6 +289,7 @@ export default function OnlineSearch() {
                     />
                 </div>
             )}
+            <div className="h-5" />
         </div>
     );
 }
