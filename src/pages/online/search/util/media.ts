@@ -1,11 +1,36 @@
-import {
-    SearchCardItem,
-    SearchMediaGenre,
-    SearchOne,
-} from "@/api/type";
+import { SearchCardItem, SearchMediaGenre, SearchOne } from "@/api/type";
+
+const STORED_ROOTS = ["/data/resources/online/", "/media/online/"];
+
+/** 列表里的 url / instances 原值，去掉共享目录前缀，保留相对路径 */
+export function onlineEventMediaKey(path: string): string {
+    if (!path) return "";
+    let key = path.trim().replace(/\\/g, "/");
+
+    const fromQuery = key.match(/(?:^|[?&])image_path=([^&]*)/)?.[1];
+    if (fromQuery) {
+        try {
+            key = decodeURIComponent(fromQuery);
+        } catch {
+            key = fromQuery;
+        }
+    }
+
+    for (const root of STORED_ROOTS) {
+        const at = key.indexOf(root);
+        if (at >= 0) {
+            key = key.slice(at + root.length);
+            break;
+        }
+    }
+    return key.replace(/^\/+/, "");
+}
 
 export function onlineEventMediaUrl(path: string): string {
-    return `/api/video/online/event/screenshot?image_path=${encodeURIComponent(path)}`;
+    const key = onlineEventMediaKey(path);
+    if (!key) return "";
+    const imagePath = encodeURIComponent(key).replace(/%2F/gi, "/");
+    return `/api/video/online/event/screenshot?image_path=${imagePath}`;
 }
 
 /** 按静/动模式把事件列表适配为卡片数据 */

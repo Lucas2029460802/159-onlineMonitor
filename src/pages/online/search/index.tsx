@@ -152,6 +152,14 @@ export default function OnlineSearch() {
     const { loading: searchResLoading, data: searchRes } =
         useFetch<SearchDataRes>(false, getSearchItems, filterTarget, timeStamp);
 
+    // 每 5 秒自动刷新实时监测列表
+    useEffect(() => {
+        const timer = window.setInterval(() => {
+            setTimeStamp((prev) => prev + 1);
+        }, 5000);
+        return () => window.clearInterval(timer);
+    }, []);
+
     const inputVal = useRef("");
     const searchBtn = useRef<HTMLButtonElement>(null);
     useEffect(() => {
@@ -165,28 +173,24 @@ export default function OnlineSearch() {
     }, []);
 
     return (
-        <div className="w-full h-full px-15 py-5 overflow-y-scroll">
-            <div className="grid gap-y-5 mb-5">
-                <div className="flex justify-center mb-2 h-12 ">
-                    <div className="relative w-full max-w-160 flex items-center border border-[#d1d5dc] rounded-xl shadow-sm overflow-hidden p-[5px]">
-                        <div className="pl-4 pr-2 text-[#00AEEC]">
+        <div className="w-full h-full px-6 py-4 overflow-y-scroll">
+            <div className="mb-4 rounded-2xl border border-[#eef1f4] bg-white/90 px-4 py-3 shadow-[0_6px_20px_rgba(15,23,42,0.04)]">
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="relative flex-1 min-w-[220px] max-w-xl flex items-center border border-[#e5e7eb] rounded-xl overflow-hidden h-10 bg-white">
+                        <div className="pl-3 pr-1 text-[#00AEEC]">
                             <IconSearch />
                         </div>
-
-                        {/* 中间输入框 */}
                         <input
                             type="text"
                             placeholder="输入搜索关键词..."
-                            className={`flex-grow py-3 px-2 focus:outline-none focus:ring-0 "cursor-text"`}
+                            className="flex-grow h-full px-2 text-sm focus:outline-none focus:ring-0"
                             onChange={(e) => {
                                 inputVal.current = e.target.value;
                             }}
                             defaultValue={filterTarget.keywords}
                         />
-
-                        {/* 右侧按钮 */}
                         <button
-                            className="bg-[rgb(0,174,236)]  text-white px-5  w-25 h-full hover:bg-[rgb(64,197,241)] transition rounded-xl cursor-pointer"
+                            className="bg-[rgb(0,174,236)] text-white px-4 h-full text-sm hover:bg-[rgb(64,197,241)] transition cursor-pointer"
                             ref={searchBtn}
                             onClick={() => {
                                 setFilterTarget((prev) => ({
@@ -199,15 +203,13 @@ export default function OnlineSearch() {
                             搜索
                         </button>
                     </div>
-                </div>
-                <div className="flex gap-5">
                     <Fitler
                         loading={groupLoading}
                         options={groupOptions}
                         value={groupOptions ? filterTarget.groupId : ""}
                         field={"groupId"}
                         typeName="组别"
-                        selectClassName="w-40"
+                        selectClassName="w-36"
                         onChange={onChange}
                     ></Fitler>
                     <Fitler
@@ -216,23 +218,21 @@ export default function OnlineSearch() {
                         value={channelRes ? filterTarget.channelId : ""}
                         field={"channelId"}
                         typeName="视频流"
-                        selectClassName="w-40"
-                        typeClassName="w-20"
+                        selectClassName="w-36"
+                        typeClassName="w-16"
                         onChange={onChange}
                     ></Fitler>
-                </div>
-                <div className="flex gap-5 items-center flex-wrap">
                     <Fitler
                         options={evtTypeOptions}
                         field="evtType"
                         value={filterTarget.evtType}
                         typeName="类型"
-                        selectClassName="w-40"
+                        selectClassName="w-28"
                         onChange={onChange}
                     ></Fitler>
                     <TimeAreaFilter
                         typeName="时间段"
-                        typeClassName="w-20"
+                        typeClassName="w-16"
                         startTime={filterTarget.startTime}
                         endTime={filterTarget.endTime}
                         onChange={onChangeTime}

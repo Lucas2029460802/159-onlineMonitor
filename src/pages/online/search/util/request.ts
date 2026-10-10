@@ -1,4 +1,5 @@
 import { FilterTarget } from "..";
+import { onlineEventMediaKey } from "./media";
 import { ChannelRes, FilterOptions } from "../components/Filter";
 
 import { api } from "@/api";
@@ -33,6 +34,53 @@ export async function getChannelOptions(
     return [{ value: "-1", label: "全部监控" }, ...channelOptions];
 }
 
+function firstText(...values: unknown[]): string {
+    for (const value of values) {
+        if (typeof value === "string" && value.trim()) return value;
+    }
+    return "";
+}
+
+function mediaPaths(value: unknown): string[] | undefined {
+    let items: unknown = value;
+    if (typeof items === "string") {
+        const text = items.trim();
+        if (!text) return undefined;
+        if (text.startsWith("[")) {
+            try {
+                items = JSON.parse(text);
+            } catch {
+                const key = onlineEventMediaKey(text);
+                return key ? [key] : undefined;
+            }
+        } else {
+            const key = onlineEventMediaKey(text);
+            return key ? [key] : undefined;
+        }
+    }
+    if (!Array.isArray(items)) return undefined;
+    const paths = items
+        .map((item) => {
+            if (typeof item === "string") return onlineEventMediaKey(item);
+            if (item && typeof item === "object") {
+                const record = item as Record<string, unknown>;
+                return onlineEventMediaKey(
+                    firstText(
+                        record.path,
+                        record.url,
+                        record.image_path,
+                        record.ScreenShot,
+                    ),
+                );
+            }
+            return "";
+        })
+        .filter(Boolean);
+    return paths.length > 0 ? paths : undefined;
+}
+
+// 检索记录字段名不固定，按实际响应兼容读取
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeSearchItem(raw: any) {
     const hitString =
         raw.hitString ?? raw.hit_string ?? raw.HitString ?? raw.hit ?? "";
@@ -41,17 +89,18 @@ function normalizeSearchItem(raw: any) {
         : Array.isArray(raw.Tag)
           ? raw.Tag
           : undefined;
-    const instances = Array.isArray(raw.instances)
-        ? raw.instances
-        : Array.isArray(raw.Instances)
-          ? raw.Instances
-          : undefined;
+    const instances = mediaPaths(
+        raw.instances ?? raw.Instances ?? raw.instance,
+    );
+    const url = onlineEventMediaKey(
+        firstText(raw.url, raw.Url, raw.Gif, raw.gif, raw.gif_url, raw.gifUrl),
+    );
 
     return {
         ...raw,
         id: raw.id ?? raw.Id,
         time: raw.time ? new Date(raw.time) : new Date(),
-        url: raw.url ?? "",
+        url,
         location: raw.location ?? "",
         hitString,
         type: raw.type,

@@ -45,7 +45,7 @@ export function SearchGrid({ loading, data, genre, refresh }: SearchGridProps) {
         );
 
     return (
-        <div className="grid grid-cols-4 2xl:grid-cols-5 gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
             {cards.map((item) => (
                 <SearchCard
                     key={item.key}
@@ -53,7 +53,6 @@ export function SearchGrid({ loading, data, genre, refresh }: SearchGridProps) {
                     location={item.event.location}
                     imagePath={item.imagePath}
                     hitString={item.event.hitString}
-                    caption={item.event.caption}
                     tag={item.event.tag}
                     onClick={() => {
                         setShow(true);

@@ -1,7 +1,9 @@
-// --- 建立布控组（默认实时监测，一步提交） ---
+// --- 建立布控组（默认实时监测，一步提交，含通道预览） ---
 
 import { Button, ConfigProvider, Form, Input } from "antd";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import PreviewWebRTCPlayer from "./PreviewWebrtcPlayer";
 
 import { api } from "@/api";
 import { oneSv } from "@/api/type";
@@ -31,13 +33,18 @@ function ChannelPicker({
     monitors,
     value = [],
     onChange,
+    previewId,
+    onPreview,
     id,
 }: {
     monitors: oneSv[];
     value?: number[];
     onChange?: (ids: number[]) => void;
+    previewId: number | null;
+    onPreview: (id: number) => void;
     id?: string;
 }) {
+    const form = Form.useFormInstance();
     const { status, errors } = Form.Item.useStatus();
     const [keyword, setKeyword] = useState("");
     const selected = useMemo(() => new Set(value), [value]);
@@ -51,18 +58,25 @@ function ChannelPicker({
         );
     }, [keyword, monitors]);
 
+    const clearFieldError = () => {
+        form.setFields([{ name: "groupMonitorIds", errors: [] }]);
+    };
+
     const toggle = (monitorId: number) => {
+        onPreview(monitorId);
         if (selected.has(monitorId)) {
             onChange?.(value.filter((id) => id !== monitorId));
             return;
         }
         onChange?.([...value, monitorId]);
+        clearFieldError();
     };
 
     const selectFiltered = () => {
         const next = new Set(value);
         filtered.forEach((monitor) => next.add(monitor.Id));
         onChange?.([...next]);
+        if (next.size > 0) clearFieldError();
     };
 
     const invalid = status === "error";
@@ -74,14 +88,15 @@ function ChannelPicker({
                 invalid ? "border-[#fb2c36]" : "border-[#eef1f4]"
             }`}
         >
-            <div className="px-5 pt-5 pb-4 border-b border-[#f0f2f4]">
+            <div className="px-4 pt-4 pb-3 border-b border-[#f0f2f4]">
                 <div className="flex items-start justify-between gap-3">
                     <div>
                         <div className="text-base font-medium text-text-4">
                             监控资源
                         </div>
                         <div className="mt-1 text-xs text-text-2">
-                            已选 {value.length} / {monitors.length} 路
+                            已选 {value.length} / {monitors.length} 路 ·
+                            点击可预览
                         </div>
                     </div>
                     <div className="flex items-center gap-3 pt-1">
@@ -109,7 +124,7 @@ function ChannelPicker({
                     onChange={(event) => setKeyword(event.target.value)}
                     placeholder="搜索通道名称、编号或设备"
                     prefix={<IconSearch className="w-3.5 h-3.5 text-text-2" />}
-                    className="mt-4"
+                    className="mt-3"
                 />
                 {invalid && (
                     <div className="mt-2 text-xs text-[#fb2c36]">
@@ -118,7 +133,7 @@ function ChannelPicker({
                 )}
             </div>
 
-            <div className="@container flex-1 min-h-0 overflow-y-auto p-3">
+            <div className="flex-1 min-h-0 overflow-y-auto p-3">
                 {monitors.length === 0 && (
                     <div className="h-full min-h-[200px] flex flex-col items-center justify-center text-text-2">
                         <IconSurveillance className="w-10 h-10 opacity-40" />
@@ -131,19 +146,22 @@ function ChannelPicker({
                     </div>
                 )}
                 {filtered.length > 0 && (
-                    <div className="grid grid-cols-1 @min-[560px]:grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-2">
                         {filtered.map((monitor) => {
                             const active = selected.has(monitor.Id);
+                            const previewing = previewId === monitor.Id;
                             const meta = channelMeta(monitor);
                             return (
                                 <button
                                     key={monitor.Id}
                                     type="button"
                                     onClick={() => toggle(monitor.Id)}
-                                    className={`text-left rounded-xl border px-3.5 py-3 transition-colors ${
-                                        active
-                                            ? "border-[#00aeec] bg-[#f4fbfe]"
-                                            : "border-[#eef1f4] bg-[#fbfcfd] hover:border-[#b7e7f7] hover:bg-white"
+                                    className={`text-left rounded-xl border px-3 py-2.5 transition-colors ${
+                                        previewing
+                                            ? "border-[#00aeec] bg-[#f4fbfe] ring-1 ring-[#00aeec]/30"
+                                            : active
+                                              ? "border-[#7dd3f0] bg-[#f8fcfe]"
+                                              : "border-[#eef1f4] bg-[#fbfcfd] hover:border-[#b7e7f7] hover:bg-white"
                                     }`}
                                 >
                                     <div className="flex items-start gap-3">
@@ -170,7 +188,16 @@ function ChannelPicker({
                                                 </svg>
                                             )}
                                         </span>
-                                        <span className="min-w-0">
+                                        <div className="w-14 h-10 rounded-md overflow-hidden bg-[#e8eef3] shrink-0">
+                                            {monitor.view_path ? (
+                                                <img
+                                                    src={`/api/video/image?image_path=${encodeURIComponent(monitor.view_path)}`}
+                                                    alt=""
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : null}
+                                        </div>
+                                        <span className="min-w-0 flex-1">
                                             <span className="block text-sm font-medium text-text-4 truncate">
                                                 {monitor.name}
                                             </span>
@@ -191,6 +218,138 @@ function ChannelPicker({
     );
 }
 
+function ChannelPreview({
+    monitor,
+    selectedIds,
+    monitors,
+    onSelectPreview,
+}: {
+    monitor: oneSv | null;
+    selectedIds: number[];
+    monitors: oneSv[];
+    onSelectPreview: (id: number) => void;
+}) {
+    const [webrtcSrc, setWebRtcSrc] = useState("");
+    const [loadingStream, setLoadingStream] = useState(false);
+    const [streamError, setStreamError] = useState("");
+
+    useEffect(() => {
+        let cancelled = false;
+        const load = async () => {
+            if (!monitor) {
+                setWebRtcSrc("");
+                setStreamError("");
+                return;
+            }
+            setLoadingStream(true);
+            setStreamError("");
+            setWebRtcSrc("");
+            try {
+                const res = await api.online.getWebRtc(
+                    monitor.parent_id,
+                    monitor.device_id,
+                );
+                if (!cancelled) {
+                    setWebRtcSrc(res.Data || "");
+                    if (!res.Data) setStreamError("未获取到预览地址");
+                }
+            } catch {
+                if (!cancelled) {
+                    setStreamError("预览流拉取失败，仍可查看封面");
+                }
+            } finally {
+                if (!cancelled) setLoadingStream(false);
+            }
+        };
+        load();
+        return () => {
+            cancelled = true;
+        };
+    }, [monitor?.Id, monitor?.parent_id, monitor?.device_id]);
+
+    const selectedMonitors = useMemo(
+        () => monitors.filter((m) => selectedIds.includes(m.Id)),
+        [monitors, selectedIds],
+    );
+
+    return (
+        <section className="h-full min-h-0 rounded-2xl bg-white border border-[#eef1f4] shadow-[0_10px_30px_rgba(15,23,42,0.05)] flex flex-col overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#f0f2f4]">
+                <div className="text-base font-medium text-text-4">通道预览</div>
+                <div className="mt-0.5 text-xs text-text-2 truncate">
+                    {monitor
+                        ? monitor.name
+                        : "点击左侧通道进行实时预览"}
+                </div>
+            </div>
+
+            <div className="flex-1 min-h-0 bg-[#101828] relative flex items-center justify-center">
+                {!monitor && (
+                    <div className="text-sm text-white/50 flex flex-col items-center gap-2 px-6 text-center">
+                        <IconSurveillance className="w-10 h-10 opacity-40" />
+                        <span>选择通道后显示预览</span>
+                    </div>
+                )}
+                {monitor && (
+                    <>
+                        {webrtcSrc ? (
+                            <PreviewWebRTCPlayer url={webrtcSrc} />
+                        ) : (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                {monitor.view_path ? (
+                                    <img
+                                        src={`/api/video/image?image_path=${encodeURIComponent(monitor.view_path)}`}
+                                        alt=""
+                                        className="max-w-full max-h-full object-contain opacity-90"
+                                    />
+                                ) : null}
+                                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-xs text-white/80 bg-black/50 px-2 py-1 rounded">
+                                    {loadingStream
+                                        ? "正在连接预览流…"
+                                        : streamError || "封面预览"}
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+
+            {selectedMonitors.length > 0 && (
+                <div className="h-20 border-t border-[#eef1f4] bg-[#f8fafc] overflow-x-auto flex gap-2 p-2">
+                    {selectedMonitors.map((m) => {
+                        const active = monitor?.Id === m.Id;
+                        return (
+                            <button
+                                key={m.Id}
+                                type="button"
+                                onClick={() => onSelectPreview(m.Id)}
+                                className={`relative h-full aspect-video rounded-md overflow-hidden shrink-0 border-2 transition-colors ${
+                                    active
+                                        ? "border-[#00aeec]"
+                                        : "border-transparent opacity-80 hover:opacity-100"
+                                }`}
+                            >
+                                {m.view_path ? (
+                                    <img
+                                        src={`/api/video/image?image_path=${encodeURIComponent(m.view_path)}`}
+                                        alt=""
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full bg-[#dbe3ea]" />
+                                )}
+                                <span className="absolute bottom-0 inset-x-0 bg-black/55 text-white text-[10px] px-1 truncate">
+                                    {m.name}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </section>
+    );
+}
+
 export const PhaseOne = ({
     allMonitors,
     submitting,
@@ -206,6 +365,21 @@ export const PhaseOne = ({
     const [form] = Form.useForm();
     const selectedIds =
         (Form.useWatch("groupMonitorIds", form) as number[] | undefined) ?? [];
+    const [previewId, setPreviewId] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (previewId && selectedIds.includes(previewId)) return;
+        if (selectedIds.length > 0) {
+            setPreviewId(selectedIds[selectedIds.length - 1]);
+            return;
+        }
+        if (previewId && !allMonitors.some((m) => m.Id === previewId)) {
+            setPreviewId(null);
+        }
+    }, [selectedIds, previewId, allMonitors]);
+
+    const previewMonitor =
+        allMonitors.find((m) => m.Id === previewId) ?? null;
 
     const handleSubmit = async () => {
         let values;
@@ -238,7 +412,7 @@ export const PhaseOne = ({
                     initialValues={{ groupName: "", groupMonitorIds: [] }}
                     className="h-full"
                 >
-                    <div className="h-full min-h-0 grid grid-cols-[minmax(320px,38%)_minmax(0,1fr)] grid-rows-1 gap-4">
+                    <div className="h-full min-h-0 grid grid-cols-[minmax(280px,22%)_minmax(280px,28%)_minmax(0,1fr)] grid-rows-1 gap-4">
                         <section className="h-full min-h-0 rounded-2xl bg-white border border-[#eef1f4] shadow-[0_10px_30px_rgba(15,23,42,0.05)] flex flex-col overflow-hidden">
                             <div className="h-1 bg-gradient-to-r from-[#6366f1] to-[#00aeec]" />
                             <div className="p-5 flex flex-col gap-4 flex-1 min-h-0">
@@ -251,7 +425,7 @@ export const PhaseOne = ({
                                             建立布控组
                                         </h1>
                                         <p className="mt-1 text-xs leading-5 text-text-2">
-                                            填写名称并选择右侧通道，提交后开启实时监测。
+                                            选择通道后可在右侧预览画面。
                                         </p>
                                     </div>
                                 </div>
@@ -295,9 +469,6 @@ export const PhaseOne = ({
                                             </div>
                                         </div>
                                     </div>
-                                    <p className="mt-2.5 text-xs leading-5 text-text-1">
-                                        提交后直接开启，无需第二阶段配置。
-                                    </p>
                                 </div>
 
                                 <div className="mt-auto pt-1">
@@ -322,15 +493,37 @@ export const PhaseOne = ({
                         <Form.Item
                             name="groupMonitorIds"
                             noStyle
+                            // 仅在点「确认创建布控」调用 validateFields 时校验，避免选通道过程中提前报错
+                            validateTrigger={[]}
                             rules={[
                                 {
-                                    required: true,
-                                    message: "请至少选择一个监控",
+                                    validator: async (_, value) => {
+                                        if (
+                                            Array.isArray(value) &&
+                                            value.length > 0
+                                        ) {
+                                            return;
+                                        }
+                                        throw new Error(
+                                            "请至少选择一个监控",
+                                        );
+                                    },
                                 },
                             ]}
                         >
-                            <ChannelPicker monitors={allMonitors} />
+                            <ChannelPicker
+                                monitors={allMonitors}
+                                previewId={previewId}
+                                onPreview={setPreviewId}
+                            />
                         </Form.Item>
+
+                        <ChannelPreview
+                            monitor={previewMonitor}
+                            selectedIds={selectedIds}
+                            monitors={allMonitors}
+                            onSelectPreview={setPreviewId}
+                        />
                     </div>
                 </Form>
             </div>
