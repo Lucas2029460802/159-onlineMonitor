@@ -7,7 +7,7 @@ import IconEmpty from "../../svg/icon-empty.svg?react";
 
 import { api } from "@/api";
 import { AlertDataRes, AlertOne } from "@/api/type";
-import { IconLoading } from "@/assets/svg";
+import { PageLoading } from "@/components/page-loading";
 import { strategyMap, svStrategyId } from "@/pages/online/types";
 import { Message } from "@/util/ui";
 
@@ -21,12 +21,11 @@ export function AlertGrid({ loading, data, refresh }: AlertGridProps) {
     const [show, setShow] = useState(false);
     if (loading) {
         return (
-            <div className="h-full w-full flex items-center justify-center ">
-                <div className="flex items-center gap-6 text-2xl relative -top-15">
-                    <IconLoading />
-                    <div>预警信息加载中</div>
-                </div>
-            </div>
+            <PageLoading
+                title="预警信息加载中"
+                description="正在获取预警记录"
+                className="h-auto min-h-[320px] py-12"
+            />
         );
     }
     console.log("data", data);

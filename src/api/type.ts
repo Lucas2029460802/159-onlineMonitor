@@ -507,6 +507,27 @@ export type SearchOne = {
     location: string;
     hitString: string;
     type: EvtType;
+    /** 动图事件标识，见 API.md online event */
+    event_type?: string;
+    event_id?: string;
+    segment_id?: string;
+    folderId?: number;
+    caption?: string;
+    tag?: string[];
+    start?: number;
+    end?: number;
+    instances?: string[];
+    metadata_url?: string;
+};
+
+export type SearchMediaGenre = "png" | "gif";
+
+/** 实时监测列表适配后的卡片项（动图一行一事件；静态展平 instances） */
+export type SearchCardItem = {
+    key: string;
+    imagePath: string;
+    event: SearchOne;
+    instanceIndex?: number;
 };
 
 export type SearchDataRes = {

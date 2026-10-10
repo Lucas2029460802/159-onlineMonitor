@@ -12,7 +12,7 @@ import {
     TaskStatusString,
     Video,
 } from "@/api/type";
-import { IconLoading } from "@/assets/svg";
+import { PageLoading } from "@/components/page-loading";
 import { Pagination } from "@/components/pagination";
 import { VideoPaginationSize } from "@/config";
 import { navigatePage } from "@/util/pagination";
@@ -258,10 +258,11 @@ export const Videos: FC = () => {
                     </div>
                     <div>
                         {loading && (
-                            <div className="flex items-center justify-center py-4 gap-3">
-                                <IconLoading />
-                                <div>加载中</div>
-                            </div>
+                            <PageLoading
+                                title="加载中"
+                                description="正在获取视频"
+                                className="h-auto py-8"
+                            />
                         )}
                         {!loading &&
                             thumbnails.map((item) => (

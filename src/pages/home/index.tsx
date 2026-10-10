@@ -6,7 +6,7 @@ import { Filter } from "./components/filter";
 
 import { api } from "@/api";
 import { User, Video } from "@/api/type";
-import { IconLoading } from "@/assets/svg";
+import { PageLoading } from "@/components/page-loading";
 import { Pagination } from "@/components/pagination";
 import { HomePaginationSize, SortField, SortOrder } from "@/config";
 import NotExist from "@/pages/video-player/assets/not-exist.svg?react";
@@ -72,12 +72,10 @@ export const Home: FC = () => {
                 </div>
             )}
             {loading && (
-                <div className="h-full w-full flex items-center justify-center">
-                    <div className="flex w-full h-full items-center justify-center py-4 gap-6 text-2xl">
-                        <IconLoading />
-                        <div>视频加载中</div>
-                    </div>
-                </div>
+                <PageLoading
+                    title="视频加载中"
+                    description="正在获取视频列表"
+                />
             )}
             <div className="px-[60px]">
                 {!loading && thumbnails.length > 0 && (

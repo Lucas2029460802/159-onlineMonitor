@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import Fitler, { ChannelRes, FilterOptions } from "./components/Filter";
+import PicGenreToggle from "./components/PicGenreToggle";
 import { SearchGrid } from "./components/SearchCard/search-grid";
 import TimeAreaFilter from "./components/TimeArea";
 import {
@@ -10,7 +11,7 @@ import {
     getGroupOptions,
 } from "./util/request";
 
-import { SearchDataRes } from "@/api/type";
+import { SearchDataRes, SearchMediaGenre } from "@/api/type";
 import { IconSearch } from "@/assets/svg";
 import { Pagination } from "@/components/pagination";
 import { useFetch } from "@/hooks/useFetch";
@@ -25,6 +26,9 @@ const EventTypeValues = [
 function isEventType(x: any): x is EventType {
     return EventTypeValues.includes(x);
 }
+function isMediaGenre(x: string | null): x is SearchMediaGenre {
+    return x === "png" || x === "gif";
+}
 export type EventType = (typeof EventTypeValues)[number];
 export interface FilterTarget {
     groupId: string;
@@ -35,6 +39,7 @@ export interface FilterTarget {
     endTime: Date | null;
     page: number;
     size: number;
+    genre: SearchMediaGenre;
 }
 export type ChangeFilter = <K extends keyof FilterTarget>(
     key: K,
@@ -46,6 +51,7 @@ export default function OnlineSearch() {
     const [searchParams, setSearchParams] = useSearchParams();
     const [filterTarget, setFilterTarget] = useState<FilterTarget>(() => {
         const urlEvtType = searchParams.get("evtType");
+        const urlGenre = searchParams.get("genre");
         return {
             groupId: searchParams.get("groupId") ?? "",
             channelId: searchParams.get("channelId") ?? "-1",
@@ -59,6 +65,7 @@ export default function OnlineSearch() {
                 : null,
             page: Number(searchParams.get("page") ?? 0),
             size: PERPAGE,
+            genre: isMediaGenre(urlGenre) ? urlGenre : "gif",
         };
     });
 
@@ -69,6 +76,7 @@ export default function OnlineSearch() {
             evtType: filterTarget.evtType,
             keywords: filterTarget.keywords,
             page: filterTarget.page.toString(),
+            genre: filterTarget.genre,
         };
 
         if (filterTarget.startTime)
@@ -213,7 +221,7 @@ export default function OnlineSearch() {
                         onChange={onChange}
                     ></Fitler>
                 </div>
-                <div className="flex gap-5">
+                <div className="flex gap-5 items-center flex-wrap">
                     <Fitler
                         options={evtTypeOptions}
                         field="evtType"
@@ -229,11 +237,22 @@ export default function OnlineSearch() {
                         endTime={filterTarget.endTime}
                         onChange={onChangeTime}
                     ></TimeAreaFilter>
+                    <PicGenreToggle
+                        genre={filterTarget.genre}
+                        onChange={(genre) => {
+                            setFilterTarget((prev) => ({
+                                ...prev,
+                                genre,
+                                page: 0,
+                            }));
+                        }}
+                    />
                 </div>
             </div>
             <SearchGrid
                 loading={searchResLoading}
                 data={searchRes}
+                genre={filterTarget.genre}
                 refresh={refresh}
             ></SearchGrid>
 

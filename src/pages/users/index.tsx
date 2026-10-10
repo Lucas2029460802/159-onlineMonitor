@@ -6,7 +6,8 @@ import { UserTable } from "./components/user-table";
 
 import { api } from "@/api";
 import { User, UserRoles } from "@/api/type";
-import { IconLoading, IconUserAdd } from "@/assets/svg";
+import { IconUserAdd } from "@/assets/svg";
+import { PageLoading } from "@/components/page-loading";
 import { $User } from "@/store/user";
 
 export const Users: FC = () => {
@@ -80,10 +81,11 @@ export const Users: FC = () => {
                     <div className="px-10 pb-5 pt-2">
                         <div>
                             {loading && (
-                                <div className="flex items-center justify-center py-4 gap-3">
-                                    <IconLoading />
-                                    <div>加载中</div>
-                                </div>
+                                <PageLoading
+                                    title="加载中"
+                                    description="正在获取用户列表"
+                                    className="h-auto py-8"
+                                />
                             )}
                             {!loading}
                         </div>

@@ -12,6 +12,7 @@ import { StatisticsPanel } from "./components/statistics-panel";
 import { api } from "@/api";
 import type { PlatformStatistics } from "@/api/type";
 import { OccupyTable } from "@/components/occupy-table";
+import { PageLoading } from "@/components/page-loading";
 
 const CONFIG_KEY_MAP: Record<string, string> = {
     analysis_upload_url: "分析结果上传地址",
@@ -261,9 +262,11 @@ export const Status: FC = () => {
         <div className="flex-1 p-4 overflow-y-auto text-sm flex flex-col gap-4">
             {statisticsLoading ? (
                 <SectionPanel title="数据统计">
-                    <div className="text-text-6 py-8 text-center">
-                        统计数据加载中...
-                    </div>
+                    <PageLoading
+                        title="统计数据加载中"
+                        description="正在获取统计数据"
+                        className="h-auto py-4"
+                    />
                 </SectionPanel>
             ) : statisticsError ? (
                 <SectionPanel title="数据统计">
@@ -297,9 +300,11 @@ export const Status: FC = () => {
 
             <SectionPanel title="算法端配置">
                 {configLoading ? (
-                    <div className="text-text-6 py-8 text-center">
-                        配置加载中...
-                    </div>
+                    <PageLoading
+                        title="配置加载中"
+                        description="正在获取算法端配置"
+                        className="h-auto py-4"
+                    />
                 ) : configEntries.length === 0 ? (
                     <div className="text-text-6 py-8 text-center">
                         暂无配置信息

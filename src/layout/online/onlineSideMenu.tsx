@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 
 import {
-    IconMegaphone,
     IconOnline,
     IconPeopleCount,
     IconRealtime,
@@ -18,7 +17,6 @@ const ONLINE_SUB_ROUTES = [
         Icon: IconSurveillance,
     },
     { path: "alg-set", label: "算法布控", Icon: IconSetAlg },
-    { path: "alert-center", label: "预警中心", Icon: IconMegaphone },
     { path: "search", label: "实时监测", Icon: IconRealtime },
     { path: "people-count", label: "人流统计", Icon: IconPeopleCount },
 ] as const;

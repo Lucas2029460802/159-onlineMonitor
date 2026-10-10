@@ -1,77 +1,44 @@
-import { UserOutlined, FireOutlined } from "@ant-design/icons";
-import { Modal, message } from "antd";
-import React, { useState, useEffect } from "react";
+import { message } from "antd";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { strategyMap, svStrategy } from "../types";
+import { STRATEGYID } from "../types";
 import { PhaseOne } from "./components/PhaseOne";
-import { PhaseTwo } from "./components/PhaseTwo";
 
 import { api } from "@/api";
 import { AllSvRes, oneSv } from "@/api/type";
+import { PageLoading } from "@/components/page-loading";
 
-// --- 类型定义 (根据你的需求) ---
 export type ModeType = "BATCH" | "SINGLE" | "SEARCH";
-// 算法类型定义
-export type AlgoType = "NORMAL" | "SPECIAL";
 
-export interface Algorithm {
-    id: number;
-    name: string;
-    type: AlgoType;
-    icon: React.ReactNode;
-}
-
-// 子布控任务结构
 export interface SubTask {
     id: number;
     mode: ModeType;
-    monitorIds: number[]; // 选中的监控ID
-    algorithmIds: number[]; // 选中的算法ID
-    params?: any; // 特殊参数
+    monitorIds: number[];
+    algorithmIds: number[];
+    params?: any;
 }
 
-// 整体表单数据结构
 export interface DeploymentData {
     groupName: string;
-    groupMonitorIds: number[]; // 第一阶段选中的所有监控
-    subTasks: SubTask[]; // 第二阶段生成的子任务
+    groupMonitorIds: number[];
+    subTasks: SubTask[];
 }
-
-export const SpecialAlgoArr: svStrategy[] = ["人流监测"];
-
-export const ALGORITHMS: Algorithm[] = Object.entries(strategyMap).map(
-    (item) => ({
-        id: Number(item[0]),
-        name: item[1],
-        type: SpecialAlgoArr.includes(item[1]) ? "SPECIAL" : "NORMAL",
-        icon: item[1] === "明火可见" ? <FireOutlined /> : <UserOutlined />,
-    }),
-);
-ALGORITHMS.pop();
 
 export default function AlgSet() {
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [allMonitors, setAllMonitors] = useState<oneSv[]>([]);
+    const navigate = useNavigate();
 
-    // 流程状态
-    const [currentStep, setCurrentStep] = useState<number>(0);
-
-    // 数据状态
-    const [deploymentData, setDeploymentData] = useState<DeploymentData>({
-        groupName: "",
-        groupMonitorIds: [],
-        subTasks: [],
-    });
-
-    // 加载数据
     useEffect(() => {
         const load = async () => {
             try {
-                const res: AllSvRes = await api.online.getAllSv();
+                await api.online.refreshWhitelist();
+                const res: AllSvRes = await api.online.getAllSv(true);
                 setAllMonitors(res.Data);
             } catch (e) {
-                message.error("加载监控列表失败");
+                message.error("刷新可布控通道失败，请重试");
             } finally {
                 setLoading(false);
             }
@@ -79,65 +46,53 @@ export default function AlgSet() {
         load();
     }, []);
 
-    const navigate = useNavigate();
-    // 提交最终数据
-    const handleFinalSubmit = async () => {
-        const submitPayload = {
-            ...deploymentData,
+    /** 校验通过后直接按「实时监测」提交布控，不再进入第二阶段 */
+    const handleCreateGroup = async (data: {
+        groupName: string;
+        groupMonitorIds: number[];
+    }) => {
+        const subTask: SubTask = {
+            id: Date.now(),
+            mode: "SEARCH",
+            monitorIds: [...data.groupMonitorIds],
+            algorithmIds: [STRATEGYID.SEARCH],
+        };
+        const submitPayload: DeploymentData & { timestamp: string } = {
+            groupName: data.groupName,
+            groupMonitorIds: data.groupMonitorIds,
+            subTasks: [subTask],
             timestamp: new Date().toISOString(),
         };
-        console.log("提交给后端的数据:", submitPayload);
+
+        setSubmitting(true);
         try {
             message.info("正在提交布控数据...");
             await api.online.algSetGroup(submitPayload);
             message.success(
-                `已成功为 "${deploymentData.groupName}" 创建了 ${deploymentData.subTasks.length} 个布控任务。`,
+                `已成功为「${data.groupName}」创建实时监测布控（${data.groupMonitorIds.length} 路监控）`,
             );
             navigate("/online/surveillance-manage");
         } catch (e) {
-            // message.warning(`提交失败，${e}`); axios本身会catch，这里不需要再catch了
+            // axios 拦截器已提示错误
+        } finally {
+            setSubmitting(false);
         }
     };
 
     return (
-        <div className="w-full h-full bg-[#f3f4f6] flex flex-col overflow-hidden">
-            <main className="flex-1 overflow-hidden p-4">
+        <div className="w-full h-full bg-[#f4f7f9] flex flex-col overflow-hidden">
+            <main className="flex-1 min-h-0 overflow-hidden">
                 {loading ? (
-                    <div className="h-full flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mr-4"></div>
-                        <div>加载监控数据中...</div>
-                    </div>
+                    <PageLoading
+                        title="正在同步通道"
+                        description="刷新可布控监控列表"
+                    />
                 ) : (
-                    <>
-                        {currentStep === 0 && (
-                            <PhaseOne
-                                initialData={deploymentData}
-                                allMonitors={allMonitors}
-                                onNext={(data) => {
-                                    setDeploymentData((prev) => ({
-                                        ...prev,
-                                        ...data,
-                                    }));
-                                    setCurrentStep(1);
-                                }}
-                            />
-                        )}
-
-                        {currentStep === 1 && (
-                            <PhaseTwo
-                                deploymentData={deploymentData}
-                                allMonitors={allMonitors}
-                                onBack={() => setCurrentStep(0)}
-                                onUpdateSubTasks={(tasks) => {
-                                    setDeploymentData((prev) => ({
-                                        ...prev,
-                                        subTasks: tasks,
-                                    }));
-                                }}
-                                onSubmit={handleFinalSubmit}
-                            />
-                        )}
-                    </>
+                    <PhaseOne
+                        allMonitors={allMonitors}
+                        submitting={submitting}
+                        onSubmit={handleCreateGroup}
+                    />
                 )}
             </main>
         </div>

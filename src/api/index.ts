@@ -925,9 +925,31 @@ const online = {
             },
         });
     },
-    async getAllSv(): Promise<AllSvRes> {
+    clearChannelsCache() {
+        localStorage.removeItem("channels_cache");
+    },
+    /** 刷新 SRS-SIP 可布控通道白名单并补录数据库 */
+    refreshWhitelist(): Promise<{
+        Message: string;
+        Data: {
+            fetched: number;
+            inserted: number;
+            existing: number;
+            invalid: number;
+            unavailable: number;
+            available: number;
+        };
+    }> {
+        return instance.post("/video/online/whitelist/refresh");
+    },
+    async getAllSv(forceRefresh = false): Promise<AllSvRes> {
         const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 一天
         const CACHE_KEY = "channels_cache"; // 唯一的缓存键
+
+        if (forceRefresh) {
+            localStorage.removeItem(CACHE_KEY);
+        }
+
         // 1. 尝试从 localStorage 中获取缓存
         const cachedDataString = localStorage.getItem(CACHE_KEY);
         if (cachedDataString) {

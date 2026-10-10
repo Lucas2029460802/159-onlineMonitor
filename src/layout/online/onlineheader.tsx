@@ -3,7 +3,6 @@ import { useLocation } from "react-router-dom";
 import { IconLogo, IconRightArrowBig } from "@/assets/svg";
 
 const routeMap = new Map<string, string>([
-    ["alert-center", "预警中心"],
     ["alg-set", "算法布控"],
     ["search", "实时监测"],
     ["surveillance-manage", "监控总览"],

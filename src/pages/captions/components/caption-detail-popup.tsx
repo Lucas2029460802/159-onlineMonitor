@@ -13,7 +13,8 @@ import {
 } from "../utils";
 
 import { CaptionRecord } from "@/api/caption-types";
-import { IconClose, IconLoading } from "@/assets/svg";
+import { IconClose } from "@/assets/svg";
+import { PageLoading } from "@/components/page-loading";
 import { Popup } from "@/components/popup";
 import InfoRow from "@/pages/bigpic/components/inforow";
 
@@ -101,10 +102,10 @@ export const CaptionDetailPopup: FC<CaptionDetailPopupProps> = ({
                 <div className="grid h-full min-h-0 grid-cols-[1.1fr_0.9fr] gap-0">
                     <div className="min-h-0 overflow-auto border-r border-[#e5eef5] bg-[#f7fafc] p-6">
                         {loading ? (
-                            <div className="flex h-full items-center justify-center gap-3 text-[#6b7280]">
-                                <IconLoading />
-                                <span>加载详情中...</span>
-                            </div>
+                            <PageLoading
+                                title="加载详情中"
+                                description="正在获取记录详情"
+                            />
                         ) : (
                             <div className="flex h-full flex-col gap-4">
                                 <div className="min-h-[360px] overflow-hidden rounded-2xl bg-[#d8e3ec]">

@@ -1,7 +1,8 @@
 import { FC, useEffect, useState } from "react";
 
 import { api } from "@/api";
-import { IconLoading, IconRightArrow } from "@/assets/svg";
+import { IconRightArrow } from "@/assets/svg";
+import { PageLoading } from "@/components/page-loading";
 import { date2string } from "@/util/time";
 
 export const ShareMenu: FC = () => {
@@ -51,10 +52,11 @@ export const ShareMenu: FC = () => {
             {shares.length === 0 && (
                 <div className="px-3 py-5 flex items-center justify-center select-none">
                     {loading ? (
-                        <div className="flex items-center justify-center gap-3">
-                            <IconLoading />
-                            <div>加载中</div>
-                        </div>
+                        <PageLoading
+                            title="加载中"
+                            description="正在获取分享"
+                            className="h-auto py-2"
+                        />
                     ) : (
                         <div>暂无分享</div>
                     )}

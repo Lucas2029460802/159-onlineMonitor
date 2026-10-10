@@ -6,8 +6,8 @@ import { ShareTable } from "./components/share-table";
 
 import { api } from "@/api";
 import { User } from "@/api/type";
-import { IconLoading } from "@/assets/svg";
 import { ConfirmContext } from "@/components/confirm";
+import { PageLoading } from "@/components/page-loading";
 import { Search } from "@/components/search";
 import { Message } from "@/util/ui";
 
@@ -150,10 +150,11 @@ export const Share: FC = () => {
                     </div>
                     <div>
                         {loading && (
-                            <div className="flex items-center justify-center py-4 gap-3">
-                                <IconLoading />
-                                <div>加载中</div>
-                            </div>
+                            <PageLoading
+                                title="加载中"
+                                description="正在获取分享记录"
+                                className="h-auto py-8"
+                            />
                         )}
                         {!loading && shareUsers.length > 0 && (
                             <ShareTable

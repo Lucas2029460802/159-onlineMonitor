@@ -11,8 +11,8 @@ import DeleteGroup from "./components/deleteGroup";
 import SvCard from "./components/svCard";
 
 import { api } from "@/api";
-import { IconLoading } from "@/assets/svg";
 import GenreTab, { TabItem } from "@/components/genre-tab";
+import { PageLoading } from "@/components/page-loading";
 import { Pagination } from "@/components/pagination";
 import NotExist from "@/pages/video-player/assets/not-exist.svg?react";
 import { Message } from "@/util/ui";
@@ -171,12 +171,11 @@ export default function SurveillanceManage() {
                 ></DeleteGroup>
             </div>
             {loading && (
-                <div className="h-full w-full flex items-center justify-center relative -top-15">
-                    <div className="flex items-center gap-6 text-2xl">
-                        <IconLoading />
-                        <div>监控加载中</div>
-                    </div>
-                </div>
+                <PageLoading
+                    title="监控加载中"
+                    description="正在获取当前分组的监控"
+                    className="flex-1 h-auto min-h-[280px]"
+                />
             )}
             {/* 无监控 */}
             {!loading && curSvGroup.length === 0 && (

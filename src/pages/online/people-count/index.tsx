@@ -12,7 +12,8 @@ import { reqeustSummaryData } from "../util/request";
 
 import { api } from "@/api";
 import { GetPeopleCountSummaryRes, GroupInfo } from "@/api/type";
-import { IconLoading, IconWait } from "@/assets/svg";
+import { IconWait } from "@/assets/svg";
+import { PageLoading } from "@/components/page-loading";
 import NotExist from "@/pages/video-player/assets/not-exist.svg?react";
 import { $PC } from "@/store/peoplecount";
 export default function PeopleCount() {
@@ -147,10 +148,10 @@ export default function PeopleCount() {
                         <div>请在左侧选择监控组</div>
                     </div>
                 ) : loading ? (
-                    <div className="h-full w-full flex items-center justify-center">
-                        <IconLoading className="w-8 h-8 vc       "></IconLoading>
-                        <span className="ml-4 text-2xl">监控加载中</span>
-                    </div>
+                    <PageLoading
+                        title="监控加载中"
+                        description="正在获取监控画面"
+                    />
                 ) : (
                     <>
                         <div className="relative w-full">

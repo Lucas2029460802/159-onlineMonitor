@@ -8,7 +8,7 @@ import { SurveillanceCameraInfo } from "../types";
 import { convertCertainSvInfo2SvInfo } from "../util";
 
 import { api } from "@/api";
-import { IconLoading } from "@/assets/svg";
+import { PageLoading } from "@/components/page-loading";
 import NotExist from "@/pages/video-player/assets/not-exist.svg?react";
 import { $PC } from "@/store/peoplecount";
 
@@ -86,10 +86,10 @@ export default function PeopleCount() {
             {/* ===== 右侧主内容区 ===== */}
             <div className="flex-1 overflow-scroll flex flex-col pt-4 ">
                 {loading ? (
-                    <div className="flex h-full items-center justify-center text-2xl gap-4">
-                        <IconLoading />
-                        <div>监控加载中</div>
-                    </div>
+                    <PageLoading
+                        title="监控加载中"
+                        description="正在获取监控画面"
+                    />
                 ) : svInfo.length === 0 ? (
                     <div className="h-full w-full flex items-center justify-center">
                         <span className="w-20 h-20">

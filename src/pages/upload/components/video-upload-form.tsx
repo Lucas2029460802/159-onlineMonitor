@@ -3,12 +3,12 @@ import { FC, useContext, useEffect, useState } from "react";
 import { UploadFileTag } from "..";
 import { VideoCrop } from "./video-crop";
 
+import { api } from "@/api";
 import { ROI } from "@/api/type";
-import { IconLoading } from "@/assets/svg";
 import { CheckBox } from "@/components/checkbox";
 import { ConfirmContext } from "@/components/confirm";
+import { PageLoading } from "@/components/page-loading";
 import { Popup } from "@/components/popup";
-import { api } from "@/api";
 import { extractFrame } from "@/util/video";
 
 interface VideoUploadFormProps {
@@ -55,7 +55,9 @@ export const VideoUploadForm: FC<VideoUploadFormProps> = (props) => {
             },
             () => {
                 // 2. 浏览器无法解码，走后端FFmpeg
-                console.log("[VideoUploadForm] 浏览器无法解码，调用后端getFirstFrame");
+                console.log(
+                    "[VideoUploadForm] 浏览器无法解码，调用后端getFirstFrame",
+                );
                 const chunk = file.slice(0, 5 * 1024 * 1024);
                 const formData = new FormData();
                 formData.append("file", chunk);
@@ -64,10 +66,15 @@ export const VideoUploadForm: FC<VideoUploadFormProps> = (props) => {
                 api.video
                     .getFirstFrame(formData)
                     .then((res: any) => {
-                        console.log("[VideoUploadForm] getFirstFrame响应:", res);
+                        console.log(
+                            "[VideoUploadForm] getFirstFrame响应:",
+                            res,
+                        );
                         const data = res.Data;
                         if (data?.frame) {
-                            setFirstFrame("data:image/jpeg;base64," + data.frame);
+                            setFirstFrame(
+                                "data:image/jpeg;base64," + data.frame,
+                            );
                             setResolutionX(data.width);
                             setResolutionY(data.height);
                             setImgWidth(data.width);
@@ -76,12 +83,18 @@ export const VideoUploadForm: FC<VideoUploadFormProps> = (props) => {
                             setCropY(0);
                             setShowPopup(true);
                         } else {
-                            console.log("[VideoUploadForm] getFirstFrame返回空frame, data:", data);
+                            console.log(
+                                "[VideoUploadForm] getFirstFrame返回空frame, data:",
+                                data,
+                            );
                             setError(true);
                         }
                     })
                     .catch((err) => {
-                        console.log("[VideoUploadForm] getFirstFrame失败:", err);
+                        console.log(
+                            "[VideoUploadForm] getFirstFrame失败:",
+                            err,
+                        );
                         setError(true);
                     });
             },
@@ -90,12 +103,12 @@ export const VideoUploadForm: FC<VideoUploadFormProps> = (props) => {
 
     if (!showPopup && !error)
         return (
-            <Popup
-                show
-                className="w-[800px] bg-white border-0 rounded-lg p-8 flex items-center justify-center gap-2"
-            >
-                文件加载中
-                <IconLoading />
+            <Popup show className="bg-transparent shadow-none border-0">
+                <PageLoading
+                    title="文件加载中"
+                    description="正在读取视频画面"
+                    className="h-auto"
+                />
             </Popup>
         );
 
